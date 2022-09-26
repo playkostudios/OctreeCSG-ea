@@ -1,0 +1,40 @@
+{
+  "name": "octreecsg-wl",
+  "version": "0.0.1",
+  "description": "Wonderland Engine port of the OctreeCSG library",
+  "main": "lib/OctreeCSG.min.js",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --minify --outfile=lib/OctreeCSG.min.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/playkostudios/OctreeCSG-wl.git"
+  },
+  "keywords": [
+    "csg",
+    "typescript",
+    "wonderland"
+  ],
+  "contributors": [
+    {
+      "name": "OctreeCSG Contributors",
+      "url": "https://github.com/giladdarshan/OctreeCSG/graphs/contributors"
+    },
+    {
+      "name": "Playko",
+      "url": "https://www.playko.com/"
+    },
+    {
+      "name": "rafern",
+      "email": "rafael@playko.com"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/playkostudios/OctreeCSG-wl/issues"
+  },
+  "homepage": "https://github.com/playkostudios/OctreeCSG-wl#readme",
+  "devDependencies": {
+    "esbuild": "^0.15.9"
+  }
+}
