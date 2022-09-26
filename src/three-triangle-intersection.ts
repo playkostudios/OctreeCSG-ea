@@ -1,10 +1,26 @@
-import { Vector2, Vector3 } from 'three';
+import { Vector2, Vector3 } from "threejs-math";
+import Line from "./math/Line";
+import Triangle from "./math/Triangle";
+
+interface Additions {
+    coplanar: boolean,
+    source: Vector3,
+    target: Vector3,
+}
+
+interface AdditionsN extends Additions {
+    N1: Vector3,
+    N2: Vector3,
+}
+
 const _v1 = new Vector3();
 const _v2 = new Vector3();
 const _v3 = new Vector3();
 
 // https://github.com/benardp/contours/blob/master/freestyle/view_map/triangle_triangle_intersection.c
-function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {    
+function triangleIntersectsTriangle(triangleA: Triangle, triangleB: Triangle, additionsIn: Additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {
+    const additions = additionsIn as AdditionsN;
+
     let p1 = triangleA.a;
     let q1 = triangleA.b;
     let r1 = triangleA.c;
@@ -16,8 +32,6 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
     // Compute distance signs  of p1, q1 and r1
     // to the plane of triangleB (p2,q2,r2)
 
-    // _v1.copy(triangleB.a).sub(triangleB.c);
-    // _v2.copy(triangleB.b).sub(triangleB.c);
     _v1.copy(p2).sub(r2);
     _v2.copy(q2).sub(r2);
     let N2 = (new Vector3()).copy(_v1).cross(_v2);
@@ -30,11 +44,10 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
     let dr1 = _v1.dot(N2);
 
     if (((dp1 * dq1) > 0) && ((dp1 * dr1) > 0)) {
-        // console.log("test 1 out");
         return false;
     }
 
-    // Compute distance signs  of p2, q2 and r2 
+    // Compute distance signs  of p2, q2 and r2
     // to the plane of triangleA (p1,q1,r1)
     _v1.copy(q1).sub(p1);
     _v2.copy(r1).sub(p1);
@@ -47,17 +60,9 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
     _v1.copy(r2).sub(r1);
     let dr2 = _v1.dot(N1);
 
-    if (((dp2 * dq2) > 0) & ((dp2 * dr2) > 0)) {
-        // console.log("test 2 out");
+    if (((dp2 * dq2) > 0) && ((dp2 * dr2) > 0)) {
         return false;
     }
-
-
-    // test
-    // if (zero_test(dp1) || zero_test(dq1) || zero_test(dr1) || zero_test(dp2) || zero_test(dq2) || zero_test(dr2)) {
-    //     additions.coplanar = 1;
-    //     return false;
-    // }
 
     additions.N2 = N2;
     additions.N1 = N1;
@@ -111,7 +116,7 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
             else {
                 // triangles are co-planar
                 additions.coplanar = true;
-                return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, N1, N2);
+                return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, N1);
             }
         }
     }
@@ -119,10 +124,7 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
 
 }
 
-function zero_test(x) {
-    return (x == 0);
-}
-function tri_tri_intersection(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2, additions) {
+function tri_tri_intersection(p1: Vector3, q1: Vector3, r1: Vector3, p2: Vector3, q2: Vector3, r2: Vector3, dp2: number, dq2: number, dr2: number, additions: AdditionsN) {
     if (dp2 > 0) {
         if (dq2 > 0) {
             return construct_intersection(p1, r1, q1, r2, p2, q2, additions);
@@ -171,21 +173,19 @@ function tri_tri_intersection(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2, additions) 
             }
             else {
                 additions.coplanar = true;
-                // return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, additions);
-                return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, additions.N1, additions.N2);
+                return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, additions.N1);
             }
         }
     }
 }
 
-function coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, normal_1, normal_2) {
+function coplanar_tri_tri3d(p1: Vector3, q1: Vector3, r1: Vector3, p2: Vector3, q2: Vector3, r2: Vector3, normal_1: Vector3) {
     let P1 = new Vector2(), Q1 = new Vector2(), R1 = new Vector2();
     let P2 = new Vector2(), Q2 = new Vector2(), R2 = new Vector2();
-    let n_x, n_y, n_z;
 
-    n_x = normal_1.x < 0 ? -normal_1.x : normal_1.x;
-    n_y = normal_1.y < 0 ? -normal_1.y : normal_1.y;
-    n_z = normal_1.z < 0 ? -normal_1.z : normal_1.z;
+    const n_x = normal_1.x < 0 ? -normal_1.x : normal_1.x;
+    const n_y = normal_1.y < 0 ? -normal_1.y : normal_1.y;
+    const n_z = normal_1.z < 0 ? -normal_1.z : normal_1.z;
 
     /* Projection of the triangles in 3D onto 2D such that the area of
     the projection is maximized. */
@@ -222,7 +222,7 @@ function coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, normal_1, normal_2) {
 
 }
 
-function tri_tri_overlap_test_2d(p1, q1, r1, p2, q2, r2) {
+function tri_tri_overlap_test_2d(p1: Vector2, q1: Vector2, r1: Vector2, p2: Vector2, q2: Vector2, r2: Vector2) {
     if (ORIENT_2D(p1, q1, r1) < 0) {
         if (ORIENT_2D(p2, q2, r2) < 0) {
             return ccw_tri_tri_intersection_2d(p1, r1, q1, p2, r2, q2);
@@ -241,23 +241,23 @@ function tri_tri_overlap_test_2d(p1, q1, r1, p2, q2, r2) {
     }
 }
 
-function ORIENT_2D(a, b, c) {
+function ORIENT_2D(a: Vector2, b: Vector2, c: Vector2) {
     return ((a.x - c.x) * (b.y - c.y) - (a.y - c.y) * (b.x - c.y));
 }
 
-function ccw_tri_tri_intersection_2d(p1, q1, r1, p2, q2, r2) {
+function ccw_tri_tri_intersection_2d(p1: Vector2, q1: Vector2, r1: Vector2, p2: Vector2, q2: Vector2, r2: Vector2) {
     if (ORIENT_2D(p2, q2, p1) >= 0) {
         if (ORIENT_2D(q2, r2, p1) >= 0) {
             if (ORIENT_2D(r2, p2, p1) >= 0) {
                 return true;
             }
             else {
-                return intersection_test_edge(p1, q1, r1, p2, q2, r2);
+                return intersection_test_edge(p1, q1, r1, p2, r2);
             }
         }
         else {
             if (ORIENT_2D(r2, p2, p1) >= 0) {
-                return intersection_test_edge(p1, q1, r1, r2, p2, q2);
+                return intersection_test_edge(p1, q1, r1, r2, q2);
             }
             else {
                 return intersection_test_vertex(p1, q1, r1, p2, q2, r2)
@@ -267,7 +267,7 @@ function ccw_tri_tri_intersection_2d(p1, q1, r1, p2, q2, r2) {
     else {
         if (ORIENT_2D(q2, r2, p1) >= 0) {
             if (ORIENT_2D(r2, p2, p1) >= 0) {
-                return intersection_test_edge(p1, q1, r2, q2, r2, p2);
+                return intersection_test_edge(p1, q1, r2, q2, p2);
             }
             else {
                 return intersection_test_vertex(p1, q1, r1, q2, r2, p2);
@@ -279,7 +279,7 @@ function ccw_tri_tri_intersection_2d(p1, q1, r1, p2, q2, r2) {
     }
 }
 
-function intersection_test_edge(P1, Q1, R1, P2, Q2, R2) {
+function intersection_test_edge(P1: Vector2, Q1: Vector2, R1: Vector2, P2: Vector2, R2: Vector2) {
     if (ORIENT_2D(R2, P2, Q1) >= 0) {
         if (ORIENT_2D(P1, P2, Q1) >= 0) {
             if (ORIENT_2D(P1, Q1, R2) >= 0) {
@@ -327,7 +327,7 @@ function intersection_test_edge(P1, Q1, R1, P2, Q2, R2) {
     }
 }
 
-function intersection_test_vertex(P1, Q1, R1, P2, Q2, R2) {
+function intersection_test_vertex(P1: Vector2, Q1: Vector2, R1: Vector2, P2: Vector2, Q2: Vector2, R2: Vector2) {
     if (ORIENT_2D(R2, P2, Q1) >= 0) {
         if (ORIENT_2D(R2, Q2, Q1) <= 0) {
             if (ORIENT_2D(P1, P2, Q1) > 0) {
@@ -400,19 +400,24 @@ function intersection_test_vertex(P1, Q1, R1, P2, Q2, R2) {
         }
     }
 };
-function construct_intersection(p1, q1, r1, p2, q2, r2, additions) {
-    let alpha;
+
+function construct_intersection(p1: Vector3, q1: Vector3, r1: Vector3, p2: Vector3, q2: Vector3, r2: Vector3, additions: AdditionsN) {
+    let alpha: number;
     let N = new Vector3();
+
     _v1.subVectors(q1, p1);
     _v2.subVectors(r2, p1);
     N.copy(_v1).cross(_v2);
     _v3.subVectors(p2, p1);
+
     if (_v3.dot(N) > 0) {
         _v1.subVectors(r1, p1);
         N.copy(_v1).cross(_v2);
+
         if (_v3.dot(N) <= 0) {
             _v2.subVectors(q2, p1);
             N.copy(_v1).cross(_v2);
+
             if (_v3.dot(N) > 0) {
                 _v1.subVectors(p1, p2);
                 _v2.subVectors(p1, r1);
@@ -424,6 +429,7 @@ function construct_intersection(p1, q1, r1, p2, q2, r2, additions) {
                 alpha = _v1.dot(additions.N1) / _v2.dot(additions.N1);
                 _v1.copy(_v2).multiplyScalar(alpha);
                 additions.target.subVectors(p2, _v1);
+
                 return true;
             }
             else {
@@ -437,6 +443,7 @@ function construct_intersection(p1, q1, r1, p2, q2, r2, additions) {
                 alpha = _v1.dot(additions.N1) / _v2.dot(additions.N1);
                 _v1.copy(_v2).multiplyScalar(alpha);
                 additions.target.subVectors(p2, _v1);
+
                 return true;
             }
         }
@@ -447,6 +454,7 @@ function construct_intersection(p1, q1, r1, p2, q2, r2, additions) {
     else {
         _v2.subVectors(q2, p1);
         N.copy(_v1).cross(_v2);
+
         if (_v3.dot(N) < 0) {
             return false;
         }
@@ -464,6 +472,7 @@ function construct_intersection(p1, q1, r1, p2, q2, r2, additions) {
                 alpha = _v1.dot(additions.N2) / _v2.dot(additions.N2);
                 _v1.copy(_v2).multiplyScalar(alpha);
                 additions.target.subVectors(p1, _v1);
+
                 return true;
             }
             else {
@@ -477,23 +486,17 @@ function construct_intersection(p1, q1, r1, p2, q2, r2, additions) {
                 alpha = _v1.dot(additions.N2) / _v2.dot(additions.N2);
                 _v1.copy(_v2).multiplyScalar(alpha);
                 additions.target.subVectors(p1, _v1);
+
                 return true;
             }
         }
     }
 }
-function pointOnLine(line, point) {
-    let ab = _v1.copy(line.end).sub(line.start);
-    let ac = _v2.copy(point).sub(line.start);
-    let area = _v3.copy(ab).cross(ac).length();
-    let CD = area / ab.length();
-    return CD;
-}
-function lineIntersects(line1, line2, points) {
+
+function lineIntersects(line1: Line, line2: Line, points?: Vector3[]) {
     const r = (new Vector3()).copy(line1.end).sub(line1.start);
     const s = (new Vector3()).copy(line2.end).sub(line2.start);
     const q = (new Vector3()).copy(line1.start).sub(line2.start);
-    // const w = _v3.copy( line2.start ).sub( line1.start );
 
     let dotqr = q.dot(r);
     let dotqs = q.dot(s);
@@ -516,55 +519,48 @@ function lineIntersects(line1, line2, points) {
     if ((0 <= t) && (t <= 1) && (0<= u) && (u<=1)) {
         onSegment = true;
     }
+
     let p0p1Length = _v1.copy(p0).sub(p1).length();
+
     if (p0p1Length <= 1e-5) {
         intersects = true;
     }
-    // console.log("lineIntersects?", intersects, onSegment, p0, p1, denom, numer, t, u);
+
     if (!(intersects && onSegment)) {
-        // return [];
         return false;
     }
-    points && points.push(p0, p1);
-    // return [p0, p1];
+
+    points?.push(p0, p1);
+
     return true;
 }
-function getLines(triangle) {
+
+function getLines(triangle: Triangle) {
     return [
-        { start: triangle.a, end: triangle.b },
-        { start: triangle.b, end: triangle.c },
-        { start: triangle.c, end: triangle.a }
+        <Line>{ start: triangle.a, end: triangle.b },
+        <Line>{ start: triangle.b, end: triangle.c },
+        <Line>{ start: triangle.c, end: triangle.a }
     ];
 }
 
-function checkTrianglesIntersection(triangle1, triangle2, additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {
-    // let additions = {
-    //     coplanar: false,
-    //     source: new Vector3(),
-    //     target: new Vector3()
-    // };
+function checkTrianglesIntersection(triangle1: Triangle, triangle2: Triangle, additions: Additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {
     let triangleIntersects = triangleIntersectsTriangle(triangle1, triangle2, additions);
-    // console.log("??? 1", triangleIntersects, additions);
-    additions.triangleCheck = triangleIntersects;
     if (!triangleIntersects && additions.coplanar) {
-        // console.log("check failed, checking lines");
-        let triangle1Lines = getLines(triangle1);
-        let triangle2Lines = getLines(triangle2);
-        let intersects = false;
+        const triangle1Lines = getLines(triangle1);
+        const triangle2Lines = getLines(triangle2);
+
         for (let i = 0; i < 3; i++) {
-            intersects = false;
             for (let j = 0; j < 3; j++) {
-                intersects = lineIntersects(triangle1Lines[i], triangle2Lines[j]);
-                if (intersects) {
-                    break;
+                if (lineIntersects(triangle1Lines[i], triangle2Lines[j])) {
+                    return true;
                 }
             }
-            if (intersects) {
-                break;
-            }
         }
-        return intersects;
+
+        return false;
     }
+
     return triangleIntersects;
 }
+
 export { triangleIntersectsTriangle, checkTrianglesIntersection, getLines, lineIntersects };

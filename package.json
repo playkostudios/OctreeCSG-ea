@@ -35,6 +35,7 @@
   },
   "homepage": "https://github.com/playkostudios/OctreeCSG-wl#readme",
   "devDependencies": {
-    "esbuild": "^0.15.9"
+    "esbuild": "^0.15.9",
+    "threejs-math": "^0.143.3"
   }
 }
