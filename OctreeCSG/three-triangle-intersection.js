@@ -4,7 +4,7 @@ const _v2 = new Vector3();
 const _v3 = new Vector3();
 
 // https://github.com/benardp/contours/blob/master/freestyle/view_map/triangle_triangle_intersection.c
-function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {    
+function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {
     let p1 = triangleA.a;
     let q1 = triangleA.b;
     let r1 = triangleA.c;
@@ -16,8 +16,6 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
     // Compute distance signs  of p1, q1 and r1
     // to the plane of triangleB (p2,q2,r2)
 
-    // _v1.copy(triangleB.a).sub(triangleB.c);
-    // _v2.copy(triangleB.b).sub(triangleB.c);
     _v1.copy(p2).sub(r2);
     _v2.copy(q2).sub(r2);
     let N2 = (new Vector3()).copy(_v1).cross(_v2);
@@ -30,11 +28,10 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
     let dr1 = _v1.dot(N2);
 
     if (((dp1 * dq1) > 0) && ((dp1 * dr1) > 0)) {
-        // console.log("test 1 out");
         return false;
     }
 
-    // Compute distance signs  of p2, q2 and r2 
+    // Compute distance signs  of p2, q2 and r2
     // to the plane of triangleA (p1,q1,r1)
     _v1.copy(q1).sub(p1);
     _v2.copy(r1).sub(p1);
@@ -48,16 +45,8 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
     let dr2 = _v1.dot(N1);
 
     if (((dp2 * dq2) > 0) & ((dp2 * dr2) > 0)) {
-        // console.log("test 2 out");
         return false;
     }
-
-
-    // test
-    // if (zero_test(dp1) || zero_test(dq1) || zero_test(dr1) || zero_test(dp2) || zero_test(dq2) || zero_test(dr2)) {
-    //     additions.coplanar = 1;
-    //     return false;
-    // }
 
     additions.N2 = N2;
     additions.N1 = N1;
@@ -119,9 +108,6 @@ function triangleIntersectsTriangle(triangleA, triangleB, additions = { coplanar
 
 }
 
-function zero_test(x) {
-    return (x == 0);
-}
 function tri_tri_intersection(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2, additions) {
     if (dp2 > 0) {
         if (dq2 > 0) {
@@ -171,7 +157,6 @@ function tri_tri_intersection(p1, q1, r1, p2, q2, r2, dp2, dq2, dr2, additions) 
             }
             else {
                 additions.coplanar = true;
-                // return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, additions);
                 return coplanar_tri_tri3d(p1, q1, r1, p2, q2, r2, additions.N1, additions.N2);
             }
         }
@@ -482,18 +467,10 @@ function construct_intersection(p1, q1, r1, p2, q2, r2, additions) {
         }
     }
 }
-function pointOnLine(line, point) {
-    let ab = _v1.copy(line.end).sub(line.start);
-    let ac = _v2.copy(point).sub(line.start);
-    let area = _v3.copy(ab).cross(ac).length();
-    let CD = area / ab.length();
-    return CD;
-}
 function lineIntersects(line1, line2, points) {
     const r = (new Vector3()).copy(line1.end).sub(line1.start);
     const s = (new Vector3()).copy(line2.end).sub(line2.start);
     const q = (new Vector3()).copy(line1.start).sub(line2.start);
-    // const w = _v3.copy( line2.start ).sub( line1.start );
 
     let dotqr = q.dot(r);
     let dotqs = q.dot(s);
@@ -520,13 +497,10 @@ function lineIntersects(line1, line2, points) {
     if (p0p1Length <= 1e-5) {
         intersects = true;
     }
-    // console.log("lineIntersects?", intersects, onSegment, p0, p1, denom, numer, t, u);
     if (!(intersects && onSegment)) {
-        // return [];
         return false;
     }
     points && points.push(p0, p1);
-    // return [p0, p1];
     return true;
 }
 function getLines(triangle) {
@@ -538,16 +512,9 @@ function getLines(triangle) {
 }
 
 function checkTrianglesIntersection(triangle1, triangle2, additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {
-    // let additions = {
-    //     coplanar: false,
-    //     source: new Vector3(),
-    //     target: new Vector3()
-    // };
     let triangleIntersects = triangleIntersectsTriangle(triangle1, triangle2, additions);
-    // console.log("??? 1", triangleIntersects, additions);
     additions.triangleCheck = triangleIntersects;
     if (!triangleIntersects && additions.coplanar) {
-        // console.log("check failed, checking lines");
         let triangle1Lines = getLines(triangle1);
         let triangle2Lines = getLines(triangle2);
         let intersects = false;

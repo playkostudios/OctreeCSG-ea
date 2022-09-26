@@ -1,16 +1,8 @@
 import * as THREE from '../threejs/three.module.js';
-// console.log("GOT HERE");
+
 onmessage = function (e) {
-    // let randLimit = Math.round(Math.random() * 1000000000);
-    // console.log("[WORKER]", randLimit, e);
-    // let worker_data = {
-    //     type: 'windingNumber',
-    //     point: point,
-    //     triangles: buffer 
-    // }
     const { type, point, coplanar, polygonID, triangles } = e.data;
     let trianglesArr = new Float32Array(triangles);
-    // console.log("[WORKER] Checking Polygon ID:", polygonID, point);
     if (type === 'windingNumber') {
         postMessage({
             type,
@@ -19,9 +11,6 @@ onmessage = function (e) {
     }
     else {
         let a = 0;
-        // for (let i = 0; i < randLimit; i++) {
-        //     a++;
-        // }
         postMessage("[From Worker] Aloha " + a);
     }
 }
@@ -46,7 +35,7 @@ const _matrix3 = new THREE.Matrix3();
 const wNPI = 4 * Math.PI;
 
 // function calcDet(a, b, c) {
-//     return (-a.z * b.y * c.x + 
+//     return (-a.z * b.y * c.x +
 //              a.y * b.z * c.x +
 //              a.z * b.x * c.y +
 //              a.x * b.z * c.y +
@@ -76,18 +65,13 @@ function polyInside_WindingNumber_buffer(trianglesArr, point, coplanar) {
     let result = false;
     _wP.copy(point);
     let wN = calcWindingNumber_buffer(trianglesArr, _wP);
-    let coplanarFound = false;
     if (wN === 0) {
         if (coplanar) {
-            // console.log("POLYGON IS COPLANAR");
             for (let j = 0; j < _wP_EPS_ARR_COUNT; j++) {
-                // console.warn("DOES IT GET HERE?");
                 _wP.copy(point).add(_wP_EPS_ARR[j]);
                 wN = calcWindingNumber_buffer(trianglesArr, _wP);
                 if (wN !== 0) {
-                    // console.warn("GOT HERE");
                     result = true;
-                    coplanarFound = true;
                     break;
                 }
             }
@@ -96,12 +80,7 @@ function polyInside_WindingNumber_buffer(trianglesArr, point, coplanar) {
     else {
         result = true;
     }
-    // if (result && polygon.coplanar) {
-    //     console.log(`[polyInside_WindingNumber] coplanar polygon found ${coplanarFound ? "IN" : "NOT IN"} coplanar test`);
-    // }
 
     return result;
 
 }
-
-// export {};
