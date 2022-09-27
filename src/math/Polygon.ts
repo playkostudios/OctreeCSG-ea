@@ -6,22 +6,24 @@ import Vertex from './Vertex';
 
 let _polygonID = 0;
 
-export default class Polygon {
+export type PolygonState = 'undecided' | 'inside' | 'coplanar-back' | 'coplanar-front' | 'outside';
+
+export class Polygon {
     id: number;
     vertices: Vertex[];
-    shared;
+    shared?: number;
     plane: Plane;
     triangle: Triangle;
     intersects: boolean;
-    state: string;
-    previousState: string;
-    previousStates: string[];
+    state: PolygonState;
+    previousState: PolygonState;
+    previousStates: PolygonState[];
     valid: boolean;
     coplanar: boolean;
     originalValid: boolean;
     newPolygon: boolean;
 
-    constructor(vertices: Vertex[], shared: number) {
+    constructor(vertices: Vertex[], shared?: number) {
         this.id = _polygonID++;
         this.vertices = vertices.map(v => v.clone());
         this.shared = shared;
@@ -71,7 +73,7 @@ export default class Polygon {
         this.newPolygon = false;
     }
 
-    setState(state: string, keepState?: string) {
+    setState(state: PolygonState, keepState?: PolygonState) {
         if (this.state === keepState) {
             return;
         }
@@ -80,7 +82,7 @@ export default class Polygon {
         this.state = state;
     }
 
-    checkAllStates(state: string) {
+    checkAllStates(state: PolygonState) {
         if ((this.state !== state) || ((this.previousState !== state) && (this.previousState !== "undecided"))) {
             return false;
         }
@@ -132,7 +134,7 @@ export default class Polygon {
             (this.plane as unknown) = undefined;
         }
         (this.triangle as unknown) = undefined;
-        this.shared = 0;
+        this.shared = undefined;
         this.setInvalid();
     }
 }
