@@ -1,4 +1,4 @@
-# OctreeCSG-wl
+# OctreeCSG-ea
 
 A stripped down engine-agnostic version of the
 [OctreeCSG library](https://github.com/giladdarshan/OctreeCSG), ported to
