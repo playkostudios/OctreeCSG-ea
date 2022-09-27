@@ -45,7 +45,7 @@ class OctreeCSG {
     replacedPolygons: Polygon[];
     box?: Box3;
     subTrees: OctreeCSG[];
-    parent?: OctreeCSG;
+    parent: OctreeCSG | null;
     level: number;
     polygonArrays: Polygon[][];
     bounds?: Box3;
@@ -55,7 +55,7 @@ class OctreeCSG {
     static maxLevel = 16;
     static polygonsPerTree = 100;
 
-    constructor(box?: Box3, parent?: OctreeCSG) {
+    constructor(box?: Box3, parent: OctreeCSG | null = null) {
         this.polygons = [];
         this.replacedPolygons = [];
         this.box = box;
@@ -621,7 +621,7 @@ class OctreeCSG {
             this.subTrees.length = 0;
         }
         this.box = undefined;
-        this.parent = undefined;
+        this.parent = null;
         this.level = 0;
     }
 

@@ -1,1 +1,1 @@
-export { Octree, OctreeCSG } from './OctreeCSG.extended';
+export { OctreeCSG } from './OctreeCSG';

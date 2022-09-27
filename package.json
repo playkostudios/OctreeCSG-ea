@@ -1,19 +1,19 @@
 {
-  "name": "octreecsg-wl",
+  "name": "octreecsg-ea",
   "version": "0.0.1",
-  "description": "Wonderland Engine port of the OctreeCSG library",
+  "description": "Engine-agnostic port of the OctreeCSG library",
   "main": "lib/OctreeCSG.min.js",
   "scripts": {
+    "lint": "eslint . --ext .ts",
     "build": "esbuild src/index.ts --bundle --minify --outfile=lib/OctreeCSG.min.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/playkostudios/OctreeCSG-wl.git"
+    "url": "git+https://github.com/playkostudios/OctreeCSG-ea.git"
   },
   "keywords": [
     "csg",
-    "typescript",
-    "wonderland"
+    "typescript"
   ],
   "contributors": [
     {
@@ -31,11 +31,14 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/playkostudios/OctreeCSG-wl/issues"
+    "url": "https://github.com/playkostudios/OctreeCSG-ea/issues"
   },
-  "homepage": "https://github.com/playkostudios/OctreeCSG-wl#readme",
+  "homepage": "https://github.com/playkostudios/OctreeCSG-ea#readme",
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.38.1",
+    "@typescript-eslint/parser": "^5.38.1",
     "esbuild": "^0.15.9",
+    "eslint": "^8.24.0",
     "threejs-math": "^0.143.3"
   }
 }

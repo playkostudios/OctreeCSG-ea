@@ -1,12 +1,13 @@
 # OctreeCSG-wl
 
-Wonderland Engine port of the
-[OctreeCSG library](https://github.com/giladdarshan/OctreeCSG). **This is very
-work-in-progress**.
+A stripped down engine-agnostic version of the
+[OctreeCSG library](https://github.com/giladdarshan/OctreeCSG), ported to
+Typescript. **This is very work-in-progress**.
 
-Original README:
+Because this is a stripped down version of the library, some features are
+missing, such as directly operating with meshes and assigning materials.
 
-# OctreeCSG
+# Original README (OctreeCSG)
 Constructive Solid Geometry (CSG) library for use with [three.js](https://github.com/mrdoob/three.js)\
 The OctreeCSG library is using the [Octree](https://en.wikipedia.org/wiki/Octree) data structure to store the geometry data for the [CSG](https://en.wikipedia.org/wiki/Constructive_solid_geometry) operations
 <br />
