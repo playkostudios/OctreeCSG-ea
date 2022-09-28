@@ -25,6 +25,7 @@ function returnXYZ(arr: Float32Array, index: number) {
 
 function calcWindingNumber_buffer(trianglesArr: Float32Array, point: Vector3) {
     let wN = 0;
+
     for (let i = 0; i < trianglesArr.length; i += 9) {
         _wV1.subVectors(returnXYZ(trianglesArr, i), point);
         _wV2.subVectors(returnXYZ(trianglesArr, i + 3), point);
@@ -36,7 +37,9 @@ function calcWindingNumber_buffer(trianglesArr: Float32Array, point: Vector3) {
         let omega = 2 * Math.atan2(_matrix3.determinant(), (lenA * lenB * lenC + _wV1.dot(_wV2) * lenC + _wV2.dot(_wV3) * lenA + _wV3.dot(_wV1) * lenB));
         wN += omega;
     }
+
     wN = Math.round(wN / wNPI);
+
     return wN;
 }
 
@@ -44,6 +47,7 @@ export function polyInside_WindingNumber_buffer(trianglesArr: Float32Array, poin
     let result = false;
     _wP.copy(point);
     let wN = calcWindingNumber_buffer(trianglesArr, _wP);
+
     if (wN === 0) {
         if (coplanar) {
             for (let j = 0; j < _wP_EPS_ARR_COUNT; j++) {
@@ -55,11 +59,9 @@ export function polyInside_WindingNumber_buffer(trianglesArr: Float32Array, poin
                 }
             }
         }
-    }
-    else {
+    } else {
         result = true;
     }
 
     return result;
-
 }

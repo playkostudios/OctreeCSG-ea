@@ -6,7 +6,7 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "lint": "eslint . --ext .ts",
-    "build": "tsc && esbuild src/index.ts --bundle --minify --outfile=lib/OctreeCSG.min.js"
+    "build": "tsc && esbuild src/index.ts --bundle --minify --platform=neutral --outfile=lib/OctreeCSG.min.js"
   },
   "repository": {
     "type": "git",
