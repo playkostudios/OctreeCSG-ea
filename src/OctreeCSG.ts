@@ -1710,4 +1710,3 @@ function prepareTriangleBuffer(polygons: Polygon[]) {
 }
 
 export default OctreeCSG;
-export { OctreeCSG as CSG, OctreeCSG, Polygon, Plane, Vertex };

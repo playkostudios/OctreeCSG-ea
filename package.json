@@ -3,9 +3,10 @@
   "version": "0.0.1",
   "description": "Engine-agnostic port of the OctreeCSG library",
   "main": "lib/OctreeCSG.min.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "lint": "eslint . --ext .ts",
-    "build": "esbuild src/index.ts --bundle --minify --outfile=lib/OctreeCSG.min.js"
+    "build": "tsc && esbuild src/index.ts --bundle --minify --outfile=lib/OctreeCSG.min.js"
   },
   "repository": {
     "type": "git",
