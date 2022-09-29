@@ -7,6 +7,16 @@ Typescript. **This is very work-in-progress**.
 Because this is a stripped down version of the library, some features are
 missing, such as directly operating with meshes and assigning materials.
 
+TODO:
+- [ ] Use gl-matrix instead of threejs-math
+- [ ] Fix operations with polygons that aren't triangles
+  - If OctreeCSG also has this problem, do a PR
+- [ ] Add workers for true async operations
+  - Do a PR to OctreeCSG when this is done
+- [ ] Add back material support
+- [ ] Make getPolygons an iterable instead of a method that creates a new array
+  - Still need to investigate whether this is even possible (is the list of polygons modified while iterating? If so, then it's not possible to just replace the method. Instead, a new method needs to be added)
+
 # Original README (OctreeCSG)
 Constructive Solid Geometry (CSG) library for use with [three.js](https://github.com/mrdoob/three.js)\
 The OctreeCSG library is using the [Octree](https://en.wikipedia.org/wiki/Octree) data structure to store the geometry data for the [CSG](https://en.wikipedia.org/wiki/Constructive_solid_geometry) operations
