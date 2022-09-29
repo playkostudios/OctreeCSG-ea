@@ -40,6 +40,6 @@
     "@typescript-eslint/parser": "^5.38.1",
     "esbuild": "^0.15.9",
     "eslint": "^8.24.0",
-    "threejs-math": "^0.143.3"
+    "gl-matrix": "^3.4.3"
   }
 }

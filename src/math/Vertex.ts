@@ -1,22 +1,22 @@
-import { Vector3 } from 'threejs-math';
+import { vec3 } from 'gl-matrix';
 
 export default class Vertex {
-    pos: Vector3;
-    normal: Vector3;
+    pos: vec3;
+    normal: vec3;
 
-    constructor(pos: Vector3, normal: Vector3) {
-        this.pos = new Vector3().copy(pos);
-        this.normal = new Vector3().copy(normal);
+    constructor(pos: vec3, normal: vec3) {
+        this.pos = vec3.clone(pos);
+        this.normal = vec3.clone(normal);
     }
 
     clone() {
-        return new Vertex(this.pos.clone(), this.normal.clone());
+        return new Vertex(vec3.clone(this.pos), vec3.clone(this.normal));
     }
 
     // Invert all orientation-specific data (e.g. vertex normal). Called when the
     // orientation of a polygon is flipped.
     flip() {
-        this.normal.negate();
+        vec3.negate(this.normal, this.normal);
     }
 
     delete() {
@@ -28,6 +28,9 @@ export default class Vertex {
     // interpolating all properties using a parameter of `t`. Subclasses should
     // override this to interpolate additional properties.
     interpolate(other: Vertex, t: number) {
-        return new Vertex(this.pos.clone().lerp(other.pos, t), this.normal.clone().lerp(other.normal, t));
+        return new Vertex(
+            vec3.lerp(vec3.create(), this.pos, other.pos, t),
+            vec3.lerp(vec3.create(), this.normal, other.normal, t)
+        );
     }
 }

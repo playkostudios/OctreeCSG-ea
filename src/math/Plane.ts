@@ -1,29 +1,51 @@
-import { Vector3 } from 'threejs-math';
+import { vec3, vec4 } from 'gl-matrix';
 import { tv0, tv1 } from '../temp';
 
 export default class Plane {
-    constructor(public normal: Vector3, public w: number) {}
+    constructor(public buffer: vec4) {}
+
+    static fromNormal(normal: vec3, w: number) {
+        const buffer = vec4.create();
+        vec3.copy(buffer as vec3, normal);
+        buffer[3] = w;
+        return new Plane(buffer);
+    }
+
+    get w(): number {
+        return this.buffer[3];
+    }
+
+    set w(w: number) {
+        this.buffer[3] = w;
+    }
 
     clone() {
-        return new Plane(this.normal.clone(), this.w);
+        return new Plane(vec4.clone(this.buffer));
     }
 
     flip() {
-        this.normal.negate();
+        vec3.negate(this.buffer as vec3, this.buffer as vec3);
         this.w = -this.w;
     }
 
     delete() {
-        (this.normal as unknown) = undefined;
-        this.w = 0;
+        (this.buffer as unknown) = undefined;
     }
 
     equals(p: Plane) {
-        return this.normal.equals(p.normal) && this.w === p.w;
+        return vec4.equals(this.buffer, p.buffer);
     }
 
-    static fromPoints(a: Vector3, b: Vector3, c: Vector3) {
-        const n = tv0.copy(b).sub(a).cross(tv1.copy(c).sub(a)).normalize().clone();
-        return new Plane(n, n.dot(a));
+    static fromPoints(a: vec3, b: vec3, c: vec3) {
+        vec3.copy(tv1, c);
+        vec3.sub(tv1, tv1, a);
+
+        vec3.copy(tv0, b);
+        vec3.sub(tv0, tv0, a);
+        vec3.cross(tv0, tv0, tv1);
+        vec3.normalize(tv0, tv0);
+
+        const n = vec3.clone(tv0);
+        return Plane.fromNormal(n, vec3.dot(n, a));
     }
 }

@@ -1,6 +1,6 @@
-import type { Vector3 } from 'threejs-math';
+import type { vec3 } from 'gl-matrix';
 
 export default interface Line {
-    start: Vector3,
-    end: Vector3,
+    start: vec3,
+    end: vec3,
 }

@@ -14,8 +14,9 @@ TODO:
 - [ ] Add workers for true async operations
   - Do a PR to OctreeCSG when this is done
 - [ ] Add back material support
-- [ ] Make getPolygons an iterable instead of a method that creates a new array
+- [x] Make getPolygons an iterable instead of a method that creates a new array
   - Still need to investigate whether this is even possible (is the list of polygons modified while iterating? If so, then it's not possible to just replace the method. Instead, a new method needs to be added)
+  - Not added. A polygon count is basically always needed when giving the polygons to an engine, since you need to make a buffer out of the polygons. Iterables have no length
 - [ ] Primitives and transformers
 
 # Original README (OctreeCSG)

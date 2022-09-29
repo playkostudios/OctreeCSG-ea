@@ -1,4 +1,4 @@
-import { Matrix3, Matrix4, Vector3 } from 'threejs-math';
+import { mat3, mat4, vec3 } from 'gl-matrix';
 import { tmpm3 } from '../temp';
 import Plane from './Plane';
 import Triangle from './Triangle';
@@ -38,29 +38,20 @@ export class Polygon {
     }
 
     getMidpoint() {
-        if (this.triangle.midPoint) {
-            return this.triangle.midPoint;
-        }
-
-        this.triangle.midPoint = this.triangle.getMidpoint(new Vector3());
         return this.triangle.midPoint;
     }
 
-    applyMatrix(matrix: Matrix4, normalMatrixIn?: Matrix3) {
-        const normalMatrix = normalMatrixIn || tmpm3.getNormalMatrix(matrix);
+    applyMatrix(matrix: mat4, normalMatrixIn?: mat3) {
+        const normalMatrix = normalMatrixIn || mat3.normalFromMat4(tmpm3, matrix);
 
         this.vertices.forEach(v => {
-            v.pos.applyMatrix4(matrix);
-            v.normal.applyMatrix3(normalMatrix);
+            vec3.transformMat4(v.pos, v.pos, matrix);
+            vec3.transformMat3(v.normal, v.normal, normalMatrix);
         });
 
         this.plane.delete();
         this.plane = Plane.fromPoints(this.vertices[0].pos, this.vertices[1].pos, this.vertices[2].pos);
         this.triangle.set(this.vertices[0].pos, this.vertices[1].pos, this.vertices[2].pos);
-
-        if (this.triangle.midPoint) {
-            this.triangle.getMidpoint(this.triangle.midPoint);
-        }
     }
 
     reset(resetOriginal = true) {
@@ -117,9 +108,7 @@ export class Polygon {
         polygon.previousState = this.previousState;
         polygon.previousStates = this.previousStates.slice();
 
-        if (this.triangle.midPoint) {
-            polygon.triangle.midPoint = this.triangle.midPoint.clone();
-        }
+        Triangle.copyMidPoint(this.triangle, polygon.triangle);
 
         return polygon;
     }

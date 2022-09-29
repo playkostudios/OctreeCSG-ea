@@ -1,11 +1,12 @@
 import { checkTrianglesIntersection } from './three-triangle-intersection';
 import { Polygon, PolygonState } from './math/Polygon';
-import { Box3, Matrix3, Matrix4, Ray, Vector3 } from 'threejs-math';
 import Plane from './math/Plane';
 import Vertex from './math/Vertex';
 import Triangle from './math/Triangle';
 import { tmpm3, tv0 } from './temp';
 import { polyInside_WindingNumber_buffer, _wP_EPS_ARR } from './common';
+
+// TODO port whole file to gl-matrix
 
 const _v1 = new Vector3();
 const _v2 = new Vector3();

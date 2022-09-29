@@ -1,24 +1,24 @@
-import { Vector2, Vector3 } from 'threejs-math';
+import { vec2, vec3 } from 'gl-matrix';
 import Line from './math/Line';
 import Triangle from './math/Triangle';
 
 interface Additions {
     coplanar: boolean,
-    source: Vector3,
-    target: Vector3,
+    source: vec3,
+    target: vec3,
 }
 
 interface AdditionsN extends Additions {
-    N1: Vector3,
-    N2: Vector3,
+    N1: vec3,
+    N2: vec3,
 }
 
-const _v1 = new Vector3();
-const _v2 = new Vector3();
-const _v3 = new Vector3();
+const _v1 = vec3.create();
+const _v2 = vec3.create();
+const _v3 = vec3.create();
 
 // https://github.com/benardp/contours/blob/master/freestyle/view_map/triangle_triangle_intersection.c
-function triangleIntersectsTriangle(triangleA: Triangle, triangleB: Triangle, additionsIn: Additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {
+function triangleIntersectsTriangle(triangleA: Triangle, triangleB: Triangle, additionsIn: Additions = { coplanar: false, source: vec3.create(), target: vec3.create() }) {
     const additions = additionsIn as AdditionsN;
 
     const p1 = triangleA.a;
@@ -31,17 +31,16 @@ function triangleIntersectsTriangle(triangleA: Triangle, triangleB: Triangle, ad
 
     // Compute distance signs  of p1, q1 and r1
     // to the plane of triangleB (p2,q2,r2)
+    vec3.sub(_v1, p2, r2);
+    vec3.sub(_v2, q2, r2);
+    const N2 = vec3.cross(vec3.create(), _v1, _v2);
 
-    _v1.copy(p2).sub(r2);
-    _v2.copy(q2).sub(r2);
-    const N2 = (new Vector3()).copy(_v1).cross(_v2);
-
-    _v1.copy(p1).sub(r2);
-    const dp1 = _v1.dot(N2);
-    _v1.copy(q1).sub(r2);
-    const dq1 = _v1.dot(N2);
-    _v1.copy(r1).sub(r2);
-    const dr1 = _v1.dot(N2);
+    vec3.sub(_v1, p1, r2);
+    const dp1 = vec3.dot(_v1, N2);
+    vec3.sub(_v1, q1, r2);
+    const dq1 = vec3.dot(_v1, N2);
+    vec3.sub(_v1, r1, r2);
+    const dr1 = vec3.dot(_v1, N2);
 
     if (dp1 * dq1 > 0 && dp1 * dr1 > 0) {
         return false;
@@ -49,16 +48,16 @@ function triangleIntersectsTriangle(triangleA: Triangle, triangleB: Triangle, ad
 
     // Compute distance signs  of p2, q2 and r2
     // to the plane of triangleA (p1,q1,r1)
-    _v1.copy(q1).sub(p1);
-    _v2.copy(r1).sub(p1);
-    const N1 = (new Vector3()).copy(_v1).cross(_v2);
+    vec3.sub(_v1, q1, p1);
+    vec3.sub(_v1, r1, p1);
+    const N1 = vec3.cross(vec3.create(), _v1, _v2);
 
-    _v1.copy(p2).sub(r1);
-    const dp2 = _v1.dot(N1);
-    _v1.copy(q2).sub(r1);
-    const dq2 = _v1.dot(N1);
-    _v1.copy(r2).sub(r1);
-    const dr2 = _v1.dot(N1);
+    vec3.sub(_v1, p2, r1);
+    const dp2 = vec3.dot(_v1, N1);
+    vec3.sub(_v1, q2, r1);
+    const dq2 = vec3.dot(_v1, N1);
+    vec3.sub(_v1, r2, r1);
+    const dr2 = vec3.dot(_v1, N1);
 
     if (dp2 * dq2 > 0 && dp2 * dr2 > 0) {
         return false;
@@ -106,7 +105,7 @@ function triangleIntersectsTriangle(triangleA: Triangle, triangleB: Triangle, ad
     }
 }
 
-function tri_tri_intersection(p1: Vector3, q1: Vector3, r1: Vector3, p2: Vector3, q2: Vector3, r2: Vector3, dp2: number, dq2: number, dr2: number, additions: AdditionsN) {
+function tri_tri_intersection(p1: Readonly<vec3>, q1: Readonly<vec3>, r1: Readonly<vec3>, p2: Readonly<vec3>, q2: Readonly<vec3>, r2: Readonly<vec3>, dp2: number, dq2: number, dr2: number, additions: AdditionsN) {
     if (dp2 > 0) {
         if (dq2 > 0) {
             return construct_intersection(p1, r1, q1, r2, p2, q2, additions);
@@ -145,47 +144,48 @@ function tri_tri_intersection(p1: Vector3, q1: Vector3, r1: Vector3, p2: Vector3
     }
 }
 
-function coplanar_tri_tri3d(p1: Vector3, q1: Vector3, r1: Vector3, p2: Vector3, q2: Vector3, r2: Vector3, normal_1: Vector3) {
-    const P1 = new Vector2(), Q1 = new Vector2(), R1 = new Vector2();
-    const P2 = new Vector2(), Q2 = new Vector2(), R2 = new Vector2();
+function coplanar_tri_tri3d(p1: Readonly<vec3>, q1: Readonly<vec3>, r1: Readonly<vec3>, p2: Readonly<vec3>, q2: Readonly<vec3>, r2: Readonly<vec3>, normal_1: vec3) {
+    const P1 = vec2.create(), Q1 = vec2.create(), R1 = vec2.create(),
+          P2 = vec2.create(), Q2 = vec2.create(), R2 = vec2.create();
 
-    const n_x = normal_1.x < 0 ? -normal_1.x : normal_1.x;
-    const n_y = normal_1.y < 0 ? -normal_1.y : normal_1.y;
-    const n_z = normal_1.z < 0 ? -normal_1.z : normal_1.z;
+    const n_x = normal_1[0] < 0 ? -normal_1[0] : normal_1[0];
+    const n_y = normal_1[1] < 0 ? -normal_1[1] : normal_1[1];
+    const n_z = normal_1[2] < 0 ? -normal_1[2] : normal_1[2];
 
     /* Projection of the triangles in 3D onto 2D such that the area of
     the projection is maximized. */
 
+    // TODO maybe use Float32Array.slice if the source is contiguous
     if (n_x > n_z && n_x >= n_y) { // Project onto plane YZ
-        P1.x = q1.z, P1.y = q1.y;
-        Q1.x = p1.z, Q1.y = p1.y;
-        R1.x = r1.z, R1.y = r1.y;
+        P1[0] = q1[2], P1[1] = q1[1];
+        Q1[0] = p1[2], Q1[1] = p1[1];
+        R1[0] = r1[2], R1[1] = r1[1];
 
-        P2.x = q2.z, P2.y = q2.y;
-        Q2.x = p2.z, Q2.y = p2.y;
-        R2.x = r2.z, R2.y = r2.y;
+        P2[0] = q2[2], P2[1] = q2[1];
+        Q2[0] = p2[2], Q2[1] = p2[1];
+        R2[0] = r2[2], R2[1] = r2[1];
     } else if (n_y > n_z && n_y >= n_x) { // Project onto plane XZ
-        P1.x = q1.x, P1.y = q1.z;
-        Q1.x = p1.x, Q1.y = p1.z;
-        R1.x = r1.x, R1.y = r1.z;
+        P1[0] = q1[0], P1[1] = q1[2];
+        Q1[0] = p1[0], Q1[1] = p1[2];
+        R1[0] = r1[0], R1[1] = r1[2];
 
-        P2.x = q2.x, P2.y = q2.z;
-        Q2.x = p2.x, Q2.y = p2.z;
-        R2.x = r2.x, R2.y = r2.z;
+        P2[0] = q2[0], P2[1] = q2[2];
+        Q2[0] = p2[0], Q2[1] = p2[2];
+        R2[0] = r2[0], R2[1] = r2[2];
     } else { // Project onto plane XY
-        P1.x = p1.x, P1.y = p1.y;
-        Q1.x = q1.x, Q1.y = q1.y;
-        R1.x = r1.x, R1.y = r1.y;
+        P1[0] = p1[0], P1[1] = p1[1];
+        Q1[0] = q1[0], Q1[1] = q1[1];
+        R1[0] = r1[0], R1[1] = r1[1];
 
-        P2.x = p2.x, P2.y = p2.y;
-        Q2.x = q2.x, Q2.y = q2.y;
-        R2.x = r2.x, R2.y = r2.y;
+        P2[0] = p2[0], P2[1] = p2[1];
+        Q2[0] = q2[0], Q2[1] = q2[1];
+        R2[0] = r2[0], R2[1] = r2[1];
     }
 
     return tri_tri_overlap_test_2d(P1, Q1, R1, P2, Q2, R2);
 }
 
-function tri_tri_overlap_test_2d(p1: Vector2, q1: Vector2, r1: Vector2, p2: Vector2, q2: Vector2, r2: Vector2) {
+function tri_tri_overlap_test_2d(p1: vec2, q1: vec2, r1: vec2, p2: vec2, q2: vec2, r2: vec2) {
     if (ORIENT_2D(p1, q1, r1) < 0) {
         if (ORIENT_2D(p2, q2, r2) < 0) {
             return ccw_tri_tri_intersection_2d(p1, r1, q1, p2, r2, q2);
@@ -199,11 +199,11 @@ function tri_tri_overlap_test_2d(p1: Vector2, q1: Vector2, r1: Vector2, p2: Vect
     }
 }
 
-function ORIENT_2D(a: Vector2, b: Vector2, c: Vector2) {
-    return ((a.x - c.x) * (b.y - c.y) - (a.y - c.y) * (b.x - c.y));
+function ORIENT_2D(a: vec2, b: vec2, c: vec2) {
+    return ((a[0] - c[0]) * (b[1] - c[1]) - (a[1] - c[1]) * (b[0] - c[1]));
 }
 
-function ccw_tri_tri_intersection_2d(p1: Vector2, q1: Vector2, r1: Vector2, p2: Vector2, q2: Vector2, r2: Vector2) {
+function ccw_tri_tri_intersection_2d(p1: vec2, q1: vec2, r1: vec2, p2: vec2, q2: vec2, r2: vec2) {
     if (ORIENT_2D(p2, q2, p1) >= 0) {
         if (ORIENT_2D(q2, r2, p1) >= 0) {
             if (ORIENT_2D(r2, p2, p1) >= 0) {
@@ -227,7 +227,7 @@ function ccw_tri_tri_intersection_2d(p1: Vector2, q1: Vector2, r1: Vector2, p2: 
     }
 }
 
-function intersection_test_edge(P1: Vector2, Q1: Vector2, R1: Vector2, P2: Vector2, R2: Vector2) {
+function intersection_test_edge(P1: vec2, Q1: vec2, R1: vec2, P2: vec2, R2: vec2) {
     if (ORIENT_2D(R2, P2, Q1) >= 0) {
         if (ORIENT_2D(P1, P2, Q1) >= 0) {
             return ORIENT_2D(P1, Q1, R2) >= 0;
@@ -241,7 +241,7 @@ function intersection_test_edge(P1: Vector2, Q1: Vector2, R1: Vector2, P2: Vecto
     return false;
 }
 
-function intersection_test_vertex(P1: Vector2, Q1: Vector2, R1: Vector2, P2: Vector2, Q2: Vector2, R2: Vector2) {
+function intersection_test_vertex(P1: vec2, Q1: vec2, R1: vec2, P2: vec2, Q2: vec2, R2: vec2) {
     if (ORIENT_2D(R2, P2, Q1) >= 0) {
         if (ORIENT_2D(R2, Q2, Q1) <= 0) {
             if (ORIENT_2D(P1, P2, Q1) > 0) {
@@ -263,7 +263,9 @@ function intersection_test_vertex(P1: Vector2, Q1: Vector2, R1: Vector2, P2: Vec
     return false;
 }
 
-function construct_intersection(p1: Vector3, q1: Vector3, r1: Vector3, p2: Vector3, q2: Vector3, r2: Vector3, additions: AdditionsN) {
+// TODO port to gl-matrix from here on out
+
+function construct_intersection(p1: Readonly<vec3>, q1: Readonly<vec3>, r1: Readonly<vec3>, p2: Readonly<vec3>, q2: Readonly<vec3>, r2: Readonly<vec3>, additions: AdditionsN) {
     let alpha: number;
     _v1.subVectors(q1, p1);
     _v2.subVectors(r2, p1);
@@ -345,7 +347,7 @@ function construct_intersection(p1: Vector3, q1: Vector3, r1: Vector3, p2: Vecto
     return false;
 }
 
-function lineIntersects(line1: Line, line2: Line, points?: Vector3[]) {
+function lineIntersects(line1: Line, line2: Line, points?: vec3[]) {
     const r = line1.end.clone().sub(line1.start);
     const s = line2.end.clone().sub(line2.start);
     const q = line1.start.clone().sub(line2.start);
@@ -397,7 +399,7 @@ function getLines(triangle: Triangle) {
     ];
 }
 
-function checkTrianglesIntersection(triangle1: Triangle, triangle2: Triangle, additions: Additions = { coplanar: false, source: new Vector3(), target: new Vector3() }) {
+function checkTrianglesIntersection(triangle1: Triangle, triangle2: Triangle, additions: Additions = { coplanar: false, source: vec3.create(), target: vec3.create() }) {
     const triangleIntersects = triangleIntersectsTriangle(triangle1, triangle2, additions);
     if (!triangleIntersects && additions.coplanar) {
         const triangle1Lines = getLines(triangle1);
