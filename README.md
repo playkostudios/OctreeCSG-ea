@@ -16,6 +16,7 @@ TODO:
 - [ ] Add back material support
 - [ ] Make getPolygons an iterable instead of a method that creates a new array
   - Still need to investigate whether this is even possible (is the list of polygons modified while iterating? If so, then it's not possible to just replace the method. Instead, a new method needs to be added)
+- [ ] Primitives and transformers
 
 # Original README (OctreeCSG)
 Constructive Solid Geometry (CSG) library for use with [three.js](https://github.com/mrdoob/three.js)\
