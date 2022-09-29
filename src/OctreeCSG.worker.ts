@@ -1,9 +1,8 @@
-import { polyInside_WindingNumber_buffer } from "./common";
+import { polyInside_WindingNumber_buffer } from './common';
 
-// TODO
 onmessage = function (e) {
-    const { type, point, coplanar, polygonID, triangles } = e.data;
-    let trianglesArr = new Float32Array(triangles);
+    const { type, point, coplanar, triangles } = e.data;
+    const trianglesArr = new Float32Array(triangles);
     if (type === 'windingNumber') {
         postMessage({
             type,
@@ -11,7 +10,8 @@ onmessage = function (e) {
         });
     }
     else {
-        let a = 0;
-        postMessage("[From Worker] Aloha " + a);
+        // TODO ?
+        const a = 0;
+        postMessage('[From Worker] Aloha ' + a);
     }
 }

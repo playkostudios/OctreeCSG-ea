@@ -6,7 +6,13 @@ import Vertex from './Vertex';
 
 let _polygonID = 0;
 
-export type PolygonState = 'undecided' | 'inside' | 'coplanar-back' | 'coplanar-front' | 'outside';
+export enum PolygonState {
+    Undecided,
+    Inside,
+    Outside,
+    CoplanarBack,
+    CoplanarFront,
+}
 
 export class Polygon {
     id: number;
@@ -14,14 +20,14 @@ export class Polygon {
     shared?: number;
     plane: Plane;
     triangle: Triangle;
-    intersects: boolean = false;
-    state: PolygonState = 'undecided';
-    previousState: PolygonState = 'undecided';
+    intersects = false;
+    state = PolygonState.Undecided;
+    previousState = PolygonState.Undecided;
     previousStates: PolygonState[] = [];
-    valid: boolean = true;
-    coplanar: boolean = false;
-    originalValid: boolean = false;
-    newPolygon: boolean = false;
+    valid = true;
+    coplanar = false;
+    originalValid = false;
+    newPolygon = false;
 
     constructor(vertices: Vertex[], shared?: number) {
         this.id = _polygonID++;
@@ -59,8 +65,8 @@ export class Polygon {
 
     reset(resetOriginal = true) {
         this.intersects = false;
-        this.state = "undecided";
-        this.previousState = "undecided";
+        this.state = PolygonState.Undecided;
+        this.previousState = PolygonState.Undecided;
         this.previousStates.length = 0;
         this.valid = true;
         this.coplanar = false;
@@ -74,12 +80,12 @@ export class Polygon {
         }
 
         this.previousState = this.state;
-        this.state !== "undecided" && this.previousStates.push(this.state);
+        this.state !== PolygonState.Undecided && this.previousStates.push(this.state);
         this.state = state;
     }
 
     checkAllStates(state: PolygonState) {
-        if (this.state !== state || (this.previousState !== state && this.previousState !== "undecided")) {
+        if (this.state !== state || (this.previousState !== state && this.previousState !== PolygonState.Undecided)) {
             return false;
         }
 
@@ -101,7 +107,7 @@ export class Polygon {
     }
 
     clone() {
-        let polygon = new Polygon(this.vertices.map(v => v.clone()), this.shared);
+        const polygon = new Polygon(this.vertices.map(v => v.clone()), this.shared);
         polygon.intersects = this.intersects;
         polygon.valid = this.valid;
         polygon.coplanar = this.coplanar;
@@ -120,7 +126,7 @@ export class Polygon {
 
     flip() {
         this.vertices.reverse().forEach(v => v.flip());
-        let tmp = this.triangle.a;
+        const tmp = this.triangle.a;
         this.triangle.a = this.triangle.c;
         this.triangle.c = tmp;
         this.plane.flip();

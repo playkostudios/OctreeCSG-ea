@@ -1,5 +1,5 @@
-import { Vector3 } from "threejs-math";
-import { tv0, tv1 } from "../temp";
+import { Vector3 } from 'threejs-math';
+import { tv0, tv1 } from '../temp';
 
 export default class Plane {
     constructor(public normal: Vector3, public w: number) {}
@@ -12,6 +12,7 @@ export default class Plane {
         this.normal.negate();
         this.w = -this.w;
     }
+
     delete() {
         (this.normal as unknown) = undefined;
         this.w = 0;
@@ -21,8 +22,8 @@ export default class Plane {
         return this.normal.equals(p.normal) && this.w === p.w;
     }
 
-    static fromPoints = function (a: Vector3, b: Vector3, c: Vector3) {
-        let n = tv0.copy(b).sub(a).cross(tv1.copy(c).sub(a)).normalize().clone();
+    static fromPoints(a: Vector3, b: Vector3, c: Vector3) {
+        const n = tv0.copy(b).sub(a).cross(tv1.copy(c).sub(a)).normalize().clone();
         return new Plane(n, n.dot(a));
     }
 }

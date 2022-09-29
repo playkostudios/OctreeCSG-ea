@@ -1,4 +1,4 @@
-import { Vector3 } from "threejs-math";
+import { Vector3 } from 'threejs-math';
 
 export default class Vertex {
     pos: Vector3;
