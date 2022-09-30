@@ -6,7 +6,8 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "lint": "eslint . --ext .ts",
-    "build": "tsc && esbuild src/index.ts --bundle --minify --platform=neutral --outfile=lib/OctreeCSG.min.js"
+    "clean": "rimraf lib/*",
+    "build": "tsc && esbuild src/index.ts --bundle --minify --platform=neutral --external:gl-matrix --outfile=lib/OctreeCSG.min.js"
   },
   "repository": {
     "type": "git",
@@ -40,6 +41,10 @@
     "@typescript-eslint/parser": "^5.38.1",
     "esbuild": "^0.15.9",
     "eslint": "^8.24.0",
-    "gl-matrix": "^3.4.3"
+    "gl-matrix": "^3.4.3",
+    "rimraf": "^3.0.2"
+  },
+  "peerDependencies": {
+    "gl-matrix": "3.x"
   }
 }

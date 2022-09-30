@@ -5,15 +5,17 @@ import Vertex from './math/Vertex';
 import Triangle from './math/Triangle';
 import { tmpm3, tv0 } from './temp';
 import { polyInside_WindingNumber_buffer, _wP_EPS_ARR } from './common';
+import { mat3, mat4, vec3 } from 'gl-matrix';
+import Box3 from './math/Box3';
+import Ray from './math/Ray';
 
-// TODO port whole file to gl-matrix
 
-const _v1 = new Vector3();
-const _v2 = new Vector3();
-const _box3$1 = new Box3();
+const _v1 = vec3.create();
+const _v2 = vec3.create();
+const _v3 = vec3.create();
 
 const _ray = new Ray();
-const _rayDirection = new Vector3(0, 0, 1);
+const _rayDirection = vec3.fromValues(0, 0, 1);
 
 const EPSILON = 1e-5;
 const COPLANAR = 0;
@@ -22,17 +24,17 @@ const BACK = 2;
 const SPANNING = 3;
 
 // working values for rayIntersectsTriangle static method
-const edge1 = new Vector3();
-const edge2 = new Vector3();
-const h = new Vector3();
-const s = new Vector3();
-const q = new Vector3();
+const edge1 = vec3.create();
+const edge2 = vec3.create();
+const h = vec3.create();
+const s = vec3.create();
+const q = vec3.create();
 const RAY_EPSILON = 0.0000001;
 
 interface RayIntersect {
     distance: number,
     polygon: Polygon,
-    position: Vector3
+    position: vec3
 }
 
 interface OctreeCSGObject {
@@ -122,12 +124,12 @@ class OctreeCSG {
             return this;
         }
 
-        this.bounds.min.x = Math.min(this.bounds.min.x, triangle.a.x, triangle.b.x, triangle.c.x);
-        this.bounds.min.y = Math.min(this.bounds.min.y, triangle.a.y, triangle.b.y, triangle.c.y);
-        this.bounds.min.z = Math.min(this.bounds.min.z, triangle.a.z, triangle.b.z, triangle.c.z);
-        this.bounds.max.x = Math.max(this.bounds.max.x, triangle.a.x, triangle.b.x, triangle.c.x);
-        this.bounds.max.y = Math.max(this.bounds.max.y, triangle.a.y, triangle.b.y, triangle.c.y);
-        this.bounds.max.z = Math.max(this.bounds.max.z, triangle.a.z, triangle.b.z, triangle.c.z);
+        this.bounds.min[0] = Math.min(this.bounds.min[0], triangle.a[0], triangle.b[0], triangle.c[0]);
+        this.bounds.min[1] = Math.min(this.bounds.min[1], triangle.a[1], triangle.b[1], triangle.c[1]);
+        this.bounds.min[2] = Math.min(this.bounds.min[2], triangle.a[2], triangle.b[2], triangle.c[2]);
+        this.bounds.max[0] = Math.max(this.bounds.max[0], triangle.a[0], triangle.b[0], triangle.c[0]);
+        this.bounds.max[1] = Math.max(this.bounds.max[1], triangle.a[1], triangle.b[1], triangle.c[1]);
+        this.bounds.max[2] = Math.max(this.bounds.max[2], triangle.a[2], triangle.b[2], triangle.c[2]);
 
         this.polygons.push(polygon);
         return this;
@@ -141,9 +143,9 @@ class OctreeCSG {
         this.box = this.bounds.clone();
 
         // offset small ammount to account for regular grid
-        this.box.min.x -= 0.01;
-        this.box.min.y -= 0.01;
-        this.box.min.z -= 0.01;
+        this.box.min[0] -= 0.01;
+        this.box.min[1] -= 0.01;
+        this.box.min[2] -= 0.01;
 
         return this;
     }
@@ -158,15 +160,17 @@ class OctreeCSG {
         }
 
         const subTrees = [];
-        const halfsize = _v2.copy(this.box.max).sub(this.box.min).multiplyScalar(0.5);
+        vec3.sub(_v2, this.box.max, this.box.min);
+        const halfsize = vec3.scale(_v2, _v2, 0.5);
         for (let x = 0; x < 2; x++) {
             for (let y = 0; y < 2; y++) {
                 for (let z = 0; z < 2; z++) {
                     const box = new Box3();
-                    const v = _v1.set(x, y, z);
+                    const v = vec3.set(_v1, x, y, z);
 
-                    box.min.copy(this.box.min).add(v.multiply(halfsize));
-                    box.max.copy(box.min).add(halfsize);
+                    vec3.multiply(_v3, v, halfsize);
+                    vec3.add(box.min, this.box.min, _v3);
+                    vec3.add(box.max, box.min, halfsize);
                     box.expandByScalar(EPSILON);
                     subTrees.push(this.newOctree(box, this));
                 }
@@ -224,7 +228,6 @@ class OctreeCSG {
                 throw new Error('Octree has no box');
             }
 
-            _box3$1.copy(this.box);
             for (const polygon of this.polygons) {
                 this.box.expandByPoint(polygon.triangle.a);
                 this.box.expandByPoint(polygon.triangle.b);
@@ -296,7 +299,7 @@ class OctreeCSG {
         }
 
         for (const subTree of this.subTrees) {
-            if (ray.intersectsBox(subTree.box as Box3)) {
+            if ((subTree.box as Box3).intersectsRay(ray)) {
                 subTree.getRayPolygons(ray, polygons);
             }
         }
@@ -305,7 +308,7 @@ class OctreeCSG {
     }
 
     rayIntersect(ray: Ray, intersects: RayIntersect[] = []) {
-        if (ray.direction.length() === 0) return [];
+        if (vec3.squaredLength(ray.direction) === 0) return [];
 
         let distance = 1e100;
 
@@ -313,12 +316,12 @@ class OctreeCSG {
             // MollerTrumbore
             const result = OctreeCSG.rayIntersectsTriangle(ray, polygon.triangle, _v1);
             if (result) {
-                const newdistance = result.clone().sub(ray.origin).length();
+                const newdistance = vec3.distance(result, ray.origin);
                 if (distance > newdistance) {
                     distance = newdistance;
                 }
                 if (distance < 1e100) {
-                    intersects.push({ distance, polygon, position: result.clone().add(ray.origin) });
+                    intersects.push({ distance, polygon, position: vec3.clone(result) });
                 }
             }
         }
@@ -551,25 +554,25 @@ class OctreeCSG {
                     if (OctreeCSG.useWindingNumber) {
                         inside = polyInside_WindingNumber_buffer(targetOctreeBuffer as Float32Array, currentPolygon.getMidpoint(), currentPolygon.coplanar);
                     } else {
-                        const point = pointRounding(_v2.copy(currentPolygon.getMidpoint()));
+                        const point = pointRounding(vec3.copy(_v2, currentPolygon.getMidpoint()));
 
-                        _ray.origin.copy(point);
-                        _rayDirection.copy(currentPolygon.plane.normal);
-                        _ray.direction.copy(currentPolygon.plane.normal);
+                        vec3.copy(_ray.origin, point);
+                        vec3.copy(_rayDirection, currentPolygon.plane.unsafeNormal);
+                        vec3.copy(_ray.direction, currentPolygon.plane.unsafeNormal);
 
                         let intersects = targetOctree.rayIntersect(_ray);
-                        if (intersects.length > 0 && _rayDirection.dot(intersects[0].polygon.plane.normal) > 0) {
+                        if (intersects.length > 0 && vec3.dot(_rayDirection, intersects[0].polygon.plane.unsafeNormal) > 0) {
                             inside = true;
                         }
 
                         if (!inside && currentPolygon.coplanar) {
                             for (const _wP_EPS of _wP_EPS_ARR) {
-                                _ray.origin.copy(point).add(_wP_EPS);
-                                _rayDirection.copy(currentPolygon.plane.normal);
-                                _ray.direction.copy(currentPolygon.plane.normal);
+                                vec3.add(_ray.origin, point, _wP_EPS);
+                                vec3.copy(_rayDirection, currentPolygon.plane.unsafeNormal);
+                                vec3.copy(_ray.direction, currentPolygon.plane.unsafeNormal);
 
                                 intersects = targetOctree.rayIntersect(_ray);
-                                if (intersects.length > 0 && _rayDirection.dot(intersects[0].polygon.plane.normal) > 0) {
+                                if (intersects.length > 0 && vec3.dot(_rayDirection, intersects[0].polygon.plane.unsafeNormal) > 0) {
                                     inside = true;
                                     break;
                                 }
@@ -646,7 +649,7 @@ class OctreeCSG {
         });
     }
 
-    applyMatrix(matrix: Matrix4, normalMatrix?: Matrix3, firstRun = true) {
+    applyMatrix(matrix: mat4, normalMatrix?: mat3, firstRun = true) {
         if (!this.box) {
             throw new Error('Octree has no box');
         }
@@ -654,7 +657,7 @@ class OctreeCSG {
         this.box.makeEmpty();
 
         if (!normalMatrix) {
-            normalMatrix = tmpm3.getNormalMatrix(matrix);
+            normalMatrix = mat3.normalFromMat4(tmpm3, matrix);
         }
 
         for (const polygon of this.polygons) {
@@ -926,36 +929,36 @@ class OctreeCSG {
         return resultOctree;
     }
 
-    static rayIntersectsTriangle(ray: Ray, triangle: Triangle, target = new Vector3()) {
+    static rayIntersectsTriangle(ray: Ray, triangle: Triangle, target = vec3.create()) {
         // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-        edge1.subVectors(triangle.b, triangle.a);
-        edge2.subVectors(triangle.c, triangle.a);
-        h.crossVectors(ray.direction, edge2);
+        vec3.sub(edge1, triangle.b, triangle.a);
+        vec3.sub(edge2, triangle.c, triangle.a);
+        vec3.cross(h, ray.direction, edge2);
 
-        const a = edge1.dot(h);
+        const a = vec3.dot(edge1, h);
         if (a > -RAY_EPSILON && a < RAY_EPSILON) {
             return null; // Ray is parallel to the triangle
         }
 
-        s.subVectors(ray.origin, triangle.a);
+        vec3.sub(s, ray.origin, triangle.a);
 
         const f = 1 / a;
-        const u = f * s.dot(h);
+        const u = f * vec3.dot(s, h);
         if (u < 0 || u > 1) {
             return null;
         }
 
-        q.crossVectors(s, edge1);
+        vec3.cross(q, s, edge1);
 
-        const v = f * ray.direction.dot(q);
+        const v = f * vec3.dot(ray.direction, q);
         if (v < 0 || u + v > 1) {
             return null;
         }
 
         // Check where intersection is
-        const t = f * edge2.dot(q);
+        const t = f * vec3.dot(edge2, q);
         if (t > RAY_EPSILON) {
-            return target.copy(ray.direction).multiplyScalar(t).add(ray.origin);
+            return vec3.scaleAndAdd(target, ray.origin, ray.direction, t);
         }
 
         return null;
@@ -1169,10 +1172,10 @@ function raycastIntersectAscSort(a: RayIntersect, b: RayIntersect) {
     return a.distance - b.distance;
 }
 
-function pointRounding(point: Vector3, num = 15) {
-    point.x = +point.x.toFixed(num);
-    point.y = +point.y.toFixed(num);
-    point.z = +point.z.toFixed(num);
+function pointRounding(point: vec3, num = 15) {
+    point[0] = +point[0].toFixed(num);
+    point[1] = +point[1].toFixed(num);
+    point[2] = +point[2].toFixed(num);
     return point;
 }
 
@@ -1199,7 +1202,7 @@ function splitPolygonByPlane(polygon: Polygon, plane: Plane, result: ReturnPolyg
     const types = [];
 
     for (const vertex of polygon.vertices) {
-        const t = plane.normal.dot(vertex.pos) - plane.w;
+        const t = vec3.dot(plane.unsafeNormal, vertex.pos) - plane.w;
         const type = (t < -EPSILON) ? BACK : (t > EPSILON) ? FRONT : COPLANAR;
         polygonType |= type;
         types.push(type);
@@ -1207,7 +1210,7 @@ function splitPolygonByPlane(polygon: Polygon, plane: Plane, result: ReturnPolyg
 
     switch (polygonType) {
         case COPLANAR:
-            returnPolygon.type = plane.normal.dot(polygon.plane.normal) > 0 ? ReturnPolygonType.CoplanarFront : ReturnPolygonType.CoplanarBack;
+            returnPolygon.type = vec3.dot(plane.unsafeNormal, polygon.plane.unsafeNormal) > 0 ? ReturnPolygonType.CoplanarFront : ReturnPolygonType.CoplanarBack;
             result.push(returnPolygon);
             break;
         case FRONT:
@@ -1240,7 +1243,8 @@ function splitPolygonByPlane(polygon: Polygon, plane: Plane, result: ReturnPolyg
                 }
 
                 if ((ti | tj) === SPANNING) {
-                    const t = (plane.w - plane.normal.dot(vi.pos)) / plane.normal.dot(tv0.copy(vj.pos).sub(vi.pos));
+                    vec3.sub(tv0, vj.pos, vi.pos);
+                    const t = (plane.w - vec3.dot(plane.unsafeNormal, vi.pos)) / vec3.dot(plane.unsafeNormal, tv0);
                     const v = vi.interpolate(vj, t);
                     f.push(v);
                     b.push(v.clone());
@@ -1296,7 +1300,7 @@ function splitPolygonArr(arr: Vertex[]) {
                 arr[0].clone(), arr[j - 2].clone(), arr[j - 1].clone()
             ]);
         }
-    } else if (arr[0].pos.distanceTo(arr[2].pos) <= arr[1].pos.distanceTo(arr[3].pos)) {
+    } else if (vec3.distance(arr[0].pos, arr[2].pos) <= vec3.distance(arr[1].pos, arr[3].pos)) {
         resultArr.push(
             [arr[0].clone(), arr[1].clone(), arr[2].clone()],
             [arr[0].clone(), arr[2].clone(), arr[3].clone()]
@@ -1456,7 +1460,7 @@ function handleObjectForOp_async(obj: OctreeCSG | OctreeCSGObject, buildTargetOc
 }
 
 function isUniqueTriangle(triangle: Triangle, set: Set<string>) {
-    const hash1 = `{${triangle.a.x},${triangle.a.y},${triangle.a.z}}-{${triangle.b.x},${triangle.b.y},${triangle.b.z}}-{${triangle.c.x},${triangle.c.y},${triangle.c.z}}`;
+    const hash1 = `{${triangle.a[0]},${triangle.a[1]},${triangle.a[2]}}-{${triangle.b[0]},${triangle.b[1]},${triangle.b[2]}}-{${triangle.c[0]},${triangle.c[1]},${triangle.c[2]}}`;
 
     if (set.has(hash1)) {
         return false;
@@ -1502,15 +1506,12 @@ function prepareTriangleBuffer(polygons: Polygon[]) {
     let bufferIndex = 0;
     for (const polygon of polygons) {
         const triangle = polygon.triangle;
-        array[bufferIndex++] = triangle.a.x;
-        array[bufferIndex++] = triangle.a.y;
-        array[bufferIndex++] = triangle.a.z;
-        array[bufferIndex++] = triangle.b.x;
-        array[bufferIndex++] = triangle.b.y;
-        array[bufferIndex++] = triangle.b.z;
-        array[bufferIndex++] = triangle.c.x;
-        array[bufferIndex++] = triangle.c.y;
-        array[bufferIndex++] = triangle.c.z;
+        array.set(triangle.a, bufferIndex);
+        bufferIndex += 3;
+        array.set(triangle.b, bufferIndex);
+        bufferIndex += 3;
+        array.set(triangle.c, bufferIndex);
+        bufferIndex += 3;
     }
 
     return array;

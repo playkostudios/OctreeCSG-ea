@@ -263,81 +263,79 @@ function intersection_test_vertex(P1: vec2, Q1: vec2, R1: vec2, P2: vec2, Q2: ve
     return false;
 }
 
-// TODO port to gl-matrix from here on out
-
 function construct_intersection(p1: Readonly<vec3>, q1: Readonly<vec3>, r1: Readonly<vec3>, p2: Readonly<vec3>, q2: Readonly<vec3>, r2: Readonly<vec3>, additions: AdditionsN) {
     let alpha: number;
-    _v1.subVectors(q1, p1);
-    _v2.subVectors(r2, p1);
-    const N = _v1.clone().cross(_v2);
-    _v3.subVectors(p2, p1);
+    vec3.sub(_v1, q1, p1);
+    vec3.sub(_v2, r2, p1);
+    const N = vec3.cross(vec3.create(), _v1, _v2);
+    vec3.sub(_v3, p2, p1);
 
-    if (_v3.dot(N) > 0) {
-        _v1.subVectors(r1, p1);
-        N.copy(_v1).cross(_v2);
+    if (vec3.dot(_v3, N) > 0) {
+        vec3.sub(_v1, r1, p1);
+        vec3.cross(N, _v1, _v2);
 
-        if (_v3.dot(N) <= 0) {
-            _v2.subVectors(q2, p1);
-            N.copy(_v1).cross(_v2);
+        if (vec3.dot(_v3, N) <= 0) {
+            vec3.sub(_v2, q2, p1);
+            vec3.cross(N, _v1, _v2);
 
-            if (_v3.dot(N) > 0) {
-                _v1.subVectors(p1, p2);
-                _v2.subVectors(p1, r1);
-                alpha = _v1.dot(additions.N2) / _v2.dot(additions.N2);
-                _v1.copy(_v2).multiplyScalar(alpha);
-                additions.source.subVectors(p1, _v1);
-                _v1.subVectors(p2, p1);
-                _v2.subVectors(p2, r2);
-                alpha = _v1.dot(additions.N1) / _v2.dot(additions.N1);
-                _v1.copy(_v2).multiplyScalar(alpha);
-                additions.target.subVectors(p2, _v1);
+            if (vec3.dot(_v3, N) > 0) {
+                vec3.sub(_v1, p1, p2);
+                vec3.sub(_v2, p1, r1);
+                alpha = vec3.dot(_v1, additions.N2) / vec3.dot(_v2, additions.N2);
+                vec3.scale(_v1, _v2, alpha);
+                vec3.sub(additions.source, p1, _v1);
+                vec3.sub(_v1, p2, p1);
+                vec3.sub(_v2, p2, r2);
+                alpha = vec3.dot(_v1, additions.N1) / vec3.dot(_v2, additions.N1);
+                vec3.scale(_v1, _v2, alpha);
+                vec3.sub(additions.target, p2, _v1);
             }
             else {
-                _v1.subVectors(p2, p1);
-                _v2.subVectors(p2, q2);
-                alpha = _v1.dot(additions.N1) / _v2.dot(additions.N1);
-                _v1.copy(_v2).multiplyScalar(alpha);
-                additions.source.subVectors(p2, _v1);
-                _v1.subVectors(p2, p1);
-                _v2.subVectors(p2, r2);
-                alpha = _v1.dot(additions.N1) / _v2.dot(additions.N1);
-                _v1.copy(_v2).multiplyScalar(alpha);
-                additions.target.subVectors(p2, _v1);
+                vec3.sub(_v1, p2, p1);
+                vec3.sub(_v2, p2, q2);
+                alpha = vec3.dot(_v1, additions.N1) / vec3.dot(_v2, additions.N1);
+                vec3.scale(_v1, _v2, alpha);
+                vec3.sub(additions.source, p2, _v1);
+                vec3.sub(_v1, p2, p1);
+                vec3.sub(_v2, p2, r2);
+                alpha = vec3.dot(_v1, additions.N1) / vec3.dot(_v2, additions.N1);
+                vec3.scale(_v1, _v2, alpha);
+                vec3.sub(additions.target, p2, _v1);
             }
 
             return true;
         }
     }
     else {
-        _v2.subVectors(q2, p1);
-        N.copy(_v1).cross(_v2);
+        vec3.sub(_v2, q2, p1);
+        vec3.cross(N, _v1, _v2);
 
-        if (_v3.dot(N) >= 0) {
-            _v1.subVectors(r1, p1);
-            N.copy(_v1).cross(_v2);
-            if (_v3.dot(N) >= 0) {
-                _v1.subVectors(p1, p2);
-                _v2.subVectors(p1, r1);
-                alpha = _v1.dot(additions.N2) / _v2.dot(additions.N2);
-                _v1.copy(_v2).multiplyScalar(alpha);
-                additions.source.subVectors(p1, _v1);
-                _v1.subVectors(p1, p2);
-                _v2.subVectors(p1, q1);
-                alpha = _v1.dot(additions.N2) / _v2.dot(additions.N2);
-                _v1.copy(_v2).multiplyScalar(alpha);
-                additions.target.subVectors(p1, _v1);
+        if (vec3.dot(_v3, N) >= 0) {
+            vec3.sub(_v1, r1, p1);
+            vec3.cross(N, _v1, _v2);
+            if (vec3.dot(_v3, N) >= 0) {
+                vec3.sub(_v1, p1, p2);
+                vec3.sub(_v2, p1, r1);
+                alpha = vec3.dot(_v1, additions.N2) / vec3.dot(_v2, additions.N2);
+                vec3.scale(_v1, _v2, alpha);
+                vec3.sub(additions.source, p1, _v1);
+                vec3.sub(_v1, p1, p2);
+                vec3.sub(_v2, p1, q1);
+                alpha = vec3.dot(_v1, additions.N2) / vec3.dot(_v2, additions.N2);
+                vec3.scale(_v1, _v2, alpha);
+                vec3.sub(additions.target, p1, _v1);
             }
             else {
-                _v1.subVectors(p2, p1);
-                _v2.subVectors(p2, q2);
-                alpha = _v1.dot(additions.N1) / _v2.dot(additions.N1);
-                _v1.copy(_v2).multiplyScalar(alpha);
-                additions.source.subVectors(p2, _v1);
-                _v1.subVectors(p1, p2);
-                _v2.subVectors(p1, q1);
-                alpha = _v1.dot(additions.N2) / _v2.dot(additions.N2);
-                _v1.copy(_v2).multiplyScalar(alpha);
-                additions.target.subVectors(p1, _v1);
+                vec3.sub(_v1, p2, p1);
+                vec3.sub(_v2, p2, q2);
+                alpha = vec3.dot(_v1, additions.N1) / vec3.dot(_v2, additions.N1);
+                vec3.scale(_v1, _v2, alpha);
+                vec3.sub(additions.source, p2, _v1);
+                vec3.sub(_v1, p1, p2);
+                vec3.sub(_v2, p1, q1);
+                alpha = vec3.dot(_v1, additions.N2) / vec3.dot(_v2, additions.N2);
+                vec3.scale(_v1, _v2, alpha);
+                vec3.sub(additions.target, p1, _v1);
             }
 
             return true;
@@ -348,15 +346,15 @@ function construct_intersection(p1: Readonly<vec3>, q1: Readonly<vec3>, r1: Read
 }
 
 function lineIntersects(line1: Line, line2: Line, points?: vec3[]) {
-    const r = line1.end.clone().sub(line1.start);
-    const s = line2.end.clone().sub(line2.start);
-    const q = line1.start.clone().sub(line2.start);
+    const r = vec3.sub(vec3.create(), line1.end, line1.start);
+    const s = vec3.sub(vec3.create(), line2.end, line2.start);
+    const q = vec3.sub(vec3.create(), line1.start, line2.start);
 
-    const dotqr = q.dot(r);
-    const dotqs = q.dot(s);
-    const dotrs = r.dot(s);
-    const dotrr = r.dot(r);
-    const dotss = s.dot(s);
+    const dotqr = vec3.dot(q, r);
+    const dotqs = vec3.dot(q, s);
+    const dotrs = vec3.dot(r, s);
+    const dotrr = vec3.dot(r, r);
+    const dotss = vec3.dot(s, s);
 
     const denom = (dotrr * dotss) - (dotrs * dotrs);
     const numer = (dotqs * dotrs) - (dotqr * dotss);
@@ -364,8 +362,8 @@ function lineIntersects(line1: Line, line2: Line, points?: vec3[]) {
     const t = numer / denom;
     const u = (dotqs + t * dotrs) / dotss;
 
-    const p0 = r.multiplyScalar(t).add(line1.start);
-    const p1 = s.multiplyScalar(u).add(line2.start);
+    const p0 = vec3.scaleAndAdd(r, line1.start, r, t);
+    const p1 = vec3.scaleAndAdd(s, line2.start, s, u);
 
     let onSegment = false;
     let intersects = false;
@@ -374,7 +372,7 @@ function lineIntersects(line1: Line, line2: Line, points?: vec3[]) {
         onSegment = true;
     }
 
-    const p0p1Length = _v1.copy(p0).sub(p1).length();
+    const p0p1Length = vec3.distance(p0, p1);
 
     if (p0p1Length <= 1e-5) {
         intersects = true;
