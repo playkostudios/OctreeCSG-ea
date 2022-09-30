@@ -1,14 +1,14 @@
-import { checkTrianglesIntersection } from './three-triangle-intersection';
-import { Polygon, PolygonState } from './math/Polygon';
-import Plane from './math/Plane';
-import Vertex from './math/Vertex';
-import Triangle from './math/Triangle';
-import { tmpm3, tv0 } from './temp';
-import { polyInside_WindingNumber_buffer, _wP_EPS_ARR } from './common';
-import { mat3, mat4, vec3 } from 'gl-matrix';
-import Box3 from './math/Box3';
-import Ray from './math/Ray';
+import { checkTrianglesIntersection } from './three-triangle-intersection.js';
+import { Polygon, PolygonState } from './math/Polygon.js';
+import Plane from './math/Plane.js';
+import Vertex from './math/Vertex.js';
+import Triangle from './math/Triangle.js';
+import { tmpm3, tv0 } from './temp.js';
+import { polyInside_WindingNumber_buffer, _wP_EPS_ARR } from './common.js';
+import Box3 from './math/Box3.js';
+import Ray from './math/Ray.js';
 
+import { mat3, mat4, vec3 } from 'gl-matrix';
 
 const _v1 = vec3.create();
 const _v2 = vec3.create();
@@ -188,7 +188,7 @@ class OctreeCSG {
                     throw new Error('Subtree has no box');
                 }
 
-                if (subBox.containsPoint(polygon.getMidpoint())) {
+                if (subBox.containsPoint(polygon.midpoint)) {
                     subTree.polygons.push(polygon);
                     found = true;
                 }
@@ -321,7 +321,7 @@ class OctreeCSG {
                     distance = newdistance;
                 }
                 if (distance < 1e100) {
-                    intersects.push({ distance, polygon, position: vec3.clone(result) });
+                    intersects.push({ distance, polygon, position: vec3.add(vec3.create(), result, ray.origin) });
                 }
             }
         }
@@ -550,11 +550,11 @@ class OctreeCSG {
                 }
 
                 inside = false;
-                if (targetOctree.box.containsPoint(currentPolygon.getMidpoint())) {
+                if (targetOctree.box.containsPoint(currentPolygon.midpoint)) {
                     if (OctreeCSG.useWindingNumber) {
-                        inside = polyInside_WindingNumber_buffer(targetOctreeBuffer as Float32Array, currentPolygon.getMidpoint(), currentPolygon.coplanar);
+                        inside = polyInside_WindingNumber_buffer(targetOctreeBuffer as Float32Array, currentPolygon.midpoint, currentPolygon.coplanar);
                     } else {
-                        const point = pointRounding(vec3.copy(_v2, currentPolygon.getMidpoint()));
+                        const point = pointRounding(vec3.copy(_v2, currentPolygon.midpoint));
 
                         vec3.copy(_ray.origin, point);
                         vec3.copy(_rayDirection, currentPolygon.plane.unsafeNormal);
@@ -1300,7 +1300,7 @@ function splitPolygonArr(arr: Vertex[]) {
                 arr[0].clone(), arr[j - 2].clone(), arr[j - 1].clone()
             ]);
         }
-    } else if (vec3.distance(arr[0].pos, arr[2].pos) <= vec3.distance(arr[1].pos, arr[3].pos)) {
+    } else if (vec3.squaredDistance(arr[0].pos, arr[2].pos) <= vec3.squaredDistance(arr[1].pos, arr[3].pos)) {
         resultArr.push(
             [arr[0].clone(), arr[1].clone(), arr[2].clone()],
             [arr[0].clone(), arr[2].clone(), arr[3].clone()]

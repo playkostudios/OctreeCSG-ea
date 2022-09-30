@@ -3,33 +3,37 @@ import { vec3 } from 'gl-matrix';
 const THIRD = 1 / 3;
 
 export default class Triangle {
-    private _midPoint?: vec3;
+    private _midpoint?: vec3;
 
     constructor(public a: Readonly<vec3>, public b: Readonly<vec3>, public c: Readonly<vec3>) {}
 
     static copyMidPoint(source: Triangle, destination: Triangle) {
-        if (source._midPoint) {
-            destination._midPoint = vec3.clone(source._midPoint);
+        if (source._midpoint) {
+            if (destination._midpoint) {
+                vec3.copy(destination._midpoint, source._midpoint);
+            } else {
+                destination._midpoint = vec3.clone(source._midpoint);
+            }
         }
     }
 
-    set(a: vec3, b: vec3, c: vec3) {
+    set(a: Readonly<vec3>, b: Readonly<vec3>, c: Readonly<vec3>) {
         this.a = a;
         this.b = b;
         this.c = c;
-        this._midPoint = undefined;
+        this._midpoint = undefined;
     }
 
-    get midPoint(): vec3 {
+    get midpoint(): Readonly<vec3> {
         // return cached version
-        if (this._midPoint) {
-            return this._midPoint;
+        if (this._midpoint) {
+            return this._midpoint;
         }
 
         // no cached version, calculate average point
-        this._midPoint = vec3.clone(this.a);
-        vec3.add(this._midPoint, this._midPoint, this.b);
-        vec3.add(this._midPoint, this._midPoint, this.c);
-        return vec3.scale(this._midPoint, this._midPoint, THIRD);
+        this._midpoint = vec3.clone(this.a);
+        vec3.add(this._midpoint, this._midpoint, this.b);
+        vec3.add(this._midpoint, this._midpoint, this.c);
+        return vec3.scale(this._midpoint, this._midpoint, THIRD);
     }
 }

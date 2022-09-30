@@ -1,13 +1,7 @@
 import { vec3 } from 'gl-matrix';
 
 export default class Vertex {
-    pos: vec3;
-    normal: vec3;
-
-    constructor(pos: vec3, normal: vec3) {
-        this.pos = vec3.clone(pos);
-        this.normal = vec3.clone(normal);
-    }
+    constructor(public pos: vec3, public normal: vec3) {}
 
     clone() {
         return new Vertex(vec3.clone(this.pos), vec3.clone(this.normal));

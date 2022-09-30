@@ -1,6 +1,7 @@
+import Line from './math/Line.js';
+import Triangle from './math/Triangle.js';
+
 import { vec2, vec3 } from 'gl-matrix';
-import Line from './math/Line';
-import Triangle from './math/Triangle';
 
 interface Additions {
     coplanar: boolean,

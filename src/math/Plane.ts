@@ -1,5 +1,6 @@
+import { tv0, tv1 } from '../temp.js';
+
 import { vec3, vec4 } from 'gl-matrix';
-import { tv0, tv1 } from '../temp';
 
 export default class Plane {
     constructor(public buffer: vec4) {}
@@ -43,11 +44,8 @@ export default class Plane {
     }
 
     static calculateNormal(a: Readonly<vec3>, b: Readonly<vec3>, c: Readonly<vec3>): vec3 {
-        vec3.copy(tv1, c);
-        vec3.sub(tv1, tv1, a);
-
-        vec3.copy(tv0, b);
-        vec3.sub(tv0, tv0, a);
+        vec3.sub(tv0, b, a);
+        vec3.sub(tv1, c, a);
         vec3.cross(tv0, tv0, tv1);
         vec3.normalize(tv0, tv0);
 

@@ -1,4 +1,4 @@
-import { mat3, vec3 } from "gl-matrix";
+import { mat3, vec3 } from 'gl-matrix';
 
 // Winding Number algorithm adapted from https://github.com/grame-cncm/faust/blob/master-dev/tools/physicalModeling/mesh2faust/vega/libraries/windingNumber/windingNumber.cpp
 const EPSILON = 1e-5;
@@ -54,7 +54,7 @@ function calcWindingNumber_buffer(trianglesArr: Float32Array, point: vec3) {
     return Math.round(wN / wNPI);
 }
 
-export function polyInside_WindingNumber_buffer(trianglesArr: Float32Array, point: vec3, coplanar: boolean) {
+export function polyInside_WindingNumber_buffer(trianglesArr: Float32Array, point: Readonly<vec3>, coplanar: boolean) {
     vec3.copy(_wP, point);
 
     if (calcWindingNumber_buffer(trianglesArr, _wP) !== 0) {

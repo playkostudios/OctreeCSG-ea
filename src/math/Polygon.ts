@@ -1,8 +1,9 @@
+import { tmpm3 } from '../temp.js';
+import Plane from './Plane.js';
+import Triangle from './Triangle.js';
+import Vertex from './Vertex.js';
+
 import { mat3, mat4, vec3 } from 'gl-matrix';
-import { tmpm3 } from '../temp';
-import Plane from './Plane';
-import Triangle from './Triangle';
-import Vertex from './Vertex';
 
 let _polygonID = 0;
 
@@ -37,8 +38,8 @@ export class Polygon {
         this.triangle = new Triangle(this.vertices[0].pos, this.vertices[1].pos, this.vertices[2].pos);
     }
 
-    getMidpoint() {
-        return this.triangle.midPoint;
+    get midpoint() {
+        return this.triangle.midpoint;
     }
 
     applyMatrix(matrix: mat4, normalMatrixIn?: mat3) {
