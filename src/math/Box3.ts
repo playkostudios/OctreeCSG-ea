@@ -48,20 +48,13 @@ export default class Box3 {
 
     private _project(points: Readonly<Readonly<vec3>[]>, normal: Readonly<vec3>): [min: number, max: number] {
         const count = points.length;
-
         let min = vec3.dot(points[0], normal);
         let max = min;
 
         for (let i = 1; i < count; i++) {
             const dotProd = vec3.dot(points[i], normal);
-
-            if(dotProd < min) {
-                min = dotProd;
-            }
-
-            if(dotProd > max) {
-                max = dotProd;
-            }
+            min = Math.min(min, dotProd);
+            max = Math.max(max, dotProd);
         }
 
         return [min, max];

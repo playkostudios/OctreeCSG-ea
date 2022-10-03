@@ -1,7 +1,8 @@
 import { mat3, vec3 } from 'gl-matrix';
 
 // Winding Number algorithm adapted from https://github.com/grame-cncm/faust/blob/master-dev/tools/physicalModeling/mesh2faust/vega/libraries/windingNumber/windingNumber.cpp
-const EPSILON = 1e-5;
+export const EPSILON = 1e-5;
+export const INV_EPSILON = 1e5;
 const _wV1 = vec3.create();
 const _wV2 = vec3.create();
 const _wV3 = vec3.create();

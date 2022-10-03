@@ -109,7 +109,7 @@ export class Polygon {
         polygon.previousState = this.previousState;
         polygon.previousStates = this.previousStates.slice();
 
-        Triangle.copyMidPoint(this.triangle, polygon.triangle);
+        Triangle.copyAuxValues(this.triangle, polygon.triangle);
 
         return polygon;
     }
