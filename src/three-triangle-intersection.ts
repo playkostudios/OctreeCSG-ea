@@ -50,7 +50,7 @@ function triangleIntersectsTriangle(triangleA: Triangle, triangleB: Triangle, ad
     // Compute distance signs  of p2, q2 and r2
     // to the plane of triangleA (p1,q1,r1)
     vec3.sub(_v1, q1, p1);
-    vec3.sub(_v1, r1, p1);
+    vec3.sub(_v2, r1, p1);
     const N1 = vec3.cross(vec3.create(), _v1, _v2);
 
     vec3.sub(_v1, p2, r1);
