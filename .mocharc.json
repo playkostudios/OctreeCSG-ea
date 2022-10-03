@@ -1,13 +1,14 @@
 {
-  // Specify "require" for CommonJS
   "require": "ts-node/register",
-  // Specify "loader" for native ESM
-  "loader": "ts-node/esm",
   "extensions": ["ts", "tsx"],
   "spec": [
     "tests/**/*.spec.*"
   ],
   "watch-files": [
     "src"
+  ],
+  "node-option": [
+    "experimental-specifier-resolution=node",
+    "loader=ts-node/esm"
   ]
 }

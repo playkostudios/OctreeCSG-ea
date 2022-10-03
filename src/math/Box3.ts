@@ -1,6 +1,6 @@
-import Plane from './Plane.js';
-import Ray from './Ray.js';
-import Triangle from './Triangle.js';
+import Plane from './Plane';
+import Ray from './Ray';
+import Triangle from './Triangle';
 
 import { vec3 } from 'gl-matrix';
 

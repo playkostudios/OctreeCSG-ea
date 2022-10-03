@@ -1,4 +1,4 @@
-import { polyInside_WindingNumber_buffer } from './common.js';
+import { polyInside_WindingNumber_buffer } from './base/winding-number';
 
 onmessage = function (e) {
     const { type, point, coplanar, triangles } = e.data;

@@ -1,7 +1,7 @@
-import { tmpm3 } from '../temp.js';
-import Plane from './Plane.js';
-import Triangle from './Triangle.js';
-import Vertex from './Vertex.js';
+import { tmpm3 } from '../temp';
+import Plane from './Plane';
+import Triangle from './Triangle';
+import Vertex from './Vertex';
 
 import { mat3, mat4, vec3 } from 'gl-matrix';
 

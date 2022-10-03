@@ -2,15 +2,24 @@
   "name": "octreecsg-ea",
   "version": "0.0.1",
   "description": "Engine-agnostic port of the OctreeCSG library",
-  "main": "lib/OctreeCSG.min.js",
+  "exports": {
+    ".": "./lib/OctreeCSG-no-workers.esm.min.js",
+    "./no-workers": "./lib/OctreeCSG-no-workers.esm.min.js",
+    "./workers": "./lib/OctreeCSG-workers.esm.min.js"
+  },
   "types": "lib/index.d.ts",
   "type": "module",
   "scripts": {
     "test": "mocha",
     "lint": "eslint . --ext .ts",
     "clean": "rimraf lib/*",
-    "build": "tsc && esbuild src/index.ts --bundle --minify --platform=neutral --external:gl-matrix --outfile=lib/OctreeCSG.min.js"
+    "build": "esbuild src/no-workers.ts src/with-workers.ts src/worker.ts --bundle --minify --splitting --platform=neutral --external:gl-matrix --outdir=lib --entry-names=OctreeCSG-[name].esm.min --chunk-names=OctreeCSG-[name]-[hash].esm.min",
+    "gen-types": "npm-dts generate --entry no-workers.ts --output lib/index.d.ts",
+    "prepack": "npm run gen-types && npm run build"
   },
+  "files": [
+    "lib"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/playkostudios/OctreeCSG-ea.git"
@@ -48,6 +57,7 @@
     "eslint": "^8.24.0",
     "gl-matrix": "^3.4.3",
     "mocha": "^10.0.0",
+    "npm-dts": "^1.3.12",
     "rimraf": "^3.0.2",
     "ts-node": "^10.9.1"
   },

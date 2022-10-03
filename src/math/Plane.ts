@@ -1,4 +1,4 @@
-import { tv0, tv1 } from '../temp.js';
+import { tv0, tv1 } from '../temp';
 
 import { vec3, vec4 } from 'gl-matrix';
 

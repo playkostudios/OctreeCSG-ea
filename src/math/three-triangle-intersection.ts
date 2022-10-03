@@ -1,5 +1,5 @@
-import Line from './math/Line.js';
-import Triangle from './math/Triangle.js';
+import Line from './Line';
+import Triangle from './Triangle';
 
 import { vec2, vec3 } from 'gl-matrix';
 
