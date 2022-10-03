@@ -10,8 +10,6 @@ missing, such as directly operating with meshes and assigning materials.
 TODO:
 - [x] Use gl-matrix instead of threejs-math
   - Also did a bunch of optimisations
-- [ ] Fix operations with polygons that aren't triangles
-  - If OctreeCSG also has this problem, do a PR
 - [ ] Add workers for true async operations
   - Do a PR to OctreeCSG when this is done
 - [ ] Add back material support
