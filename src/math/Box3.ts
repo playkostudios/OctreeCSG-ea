@@ -1,6 +1,7 @@
 import Plane from './Plane';
-import Ray from './Ray';
-import Triangle from './Triangle';
+
+import type Triangle from './Triangle';
+import type Ray from './Ray';
 
 import { vec3 } from 'gl-matrix';
 

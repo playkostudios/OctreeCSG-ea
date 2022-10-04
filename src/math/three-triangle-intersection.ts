@@ -1,5 +1,5 @@
-import Line from './Line';
-import Triangle from './Triangle';
+import type Triangle from './Triangle';
+import type Line from './Line';
 
 import { vec2, vec3 } from 'gl-matrix';
 

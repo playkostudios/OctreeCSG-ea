@@ -1,5 +1,6 @@
+import { INV_EPSILON } from './const-numbers';
+
 import { vec3 } from 'gl-matrix';
-import { INV_EPSILON } from '../common';
 
 const THIRD = 1 / 3;
 

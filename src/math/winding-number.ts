@@ -1,8 +1,10 @@
+import { EPSILON } from './const-numbers';
+
+import type { Polygon } from './Polygon';
+
 import { mat3, vec3 } from 'gl-matrix';
 
 // Winding Number algorithm adapted from https://github.com/grame-cncm/faust/blob/master-dev/tools/physicalModeling/mesh2faust/vega/libraries/windingNumber/windingNumber.cpp
-export const EPSILON = 1e-5;
-export const INV_EPSILON = 1e5;
 const _wV1 = vec3.create();
 const _wV2 = vec3.create();
 const _wV3 = vec3.create();
@@ -70,4 +72,21 @@ export function polyInside_WindingNumber_buffer(trianglesArr: Float32Array, poin
     }
 
     return false;
+}
+
+export function prepareTriangleBuffer(polygons: Polygon[]) {
+    const array = new Float32Array(polygons.length * 3 * 3);
+
+    let bufferIndex = 0;
+    for (const polygon of polygons) {
+        const triangle = polygon.triangle;
+        array.set(triangle.a, bufferIndex);
+        bufferIndex += 3;
+        array.set(triangle.b, bufferIndex);
+        bufferIndex += 3;
+        array.set(triangle.c, bufferIndex);
+        bufferIndex += 3;
+    }
+
+    return array;
 }

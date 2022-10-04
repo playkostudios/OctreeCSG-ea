@@ -1,7 +1,8 @@
-import { tmpm3 } from '../temp';
-import Plane from './Plane';
 import Triangle from './Triangle';
-import Vertex from './Vertex';
+import { tmpm3 } from './temp';
+import Plane from './Plane';
+
+import type Vertex from './Vertex';
 
 import { mat3, mat4, vec3 } from 'gl-matrix';
 

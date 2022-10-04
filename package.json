@@ -2,20 +2,15 @@
   "name": "octreecsg-ea",
   "version": "0.0.1",
   "description": "Engine-agnostic port of the OctreeCSG library",
-  "exports": {
-    ".": "./lib/OctreeCSG-no-workers.esm.min.js",
-    "./no-workers": "./lib/OctreeCSG-no-workers.esm.min.js",
-    "./workers": "./lib/OctreeCSG-workers.esm.min.js"
-  },
+  "exports": "./lib/OctreeCSG-ea.esm.min.js",
   "types": "lib/index.d.ts",
-  "type": "module",
   "scripts": {
     "test": "mocha",
     "lint": "eslint . --ext .ts",
     "clean": "rimraf lib/*",
-    "build": "esbuild src/no-workers.ts src/with-workers.ts src/worker.ts --bundle --minify --splitting --platform=neutral --external:gl-matrix --outdir=lib --entry-names=OctreeCSG-[name].esm.min --chunk-names=OctreeCSG-[name]-[hash].esm.min",
-    "gen-types": "npm-dts generate --entry no-workers.ts --output lib/index.d.ts",
-    "prepack": "npm run gen-types && npm run build"
+    "build": "rimraf lib/*.js && esbuild src/index.ts --bundle --minify --platform=neutral --external:gl-matrix --outfile=lib/OctreeCSG-ea.esm.min.js && esbuild src/worker.ts --bundle --minify --platform=browser --format=iife --outfile=lib/OctreeCSG-ea.worker.min.js",
+    "gen-types": "npm-dts generate --entry index.ts --output lib/index.d.ts -L debug",
+    "prepack": "npm run clean && npm run gen-types && npm run build"
   },
   "files": [
     "lib"
