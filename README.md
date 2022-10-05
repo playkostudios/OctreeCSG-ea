@@ -61,18 +61,7 @@ will still work, but asynchronous operations will simply act as synchronous
 operations wrapped in a promise (operations will not be done in a separate
 thread), which may introduce stuttering to a game that is using this library.
 
-## Basic Operations
-OctreeCSG provides basic boolean operations (union, subtract and intersect) for
-ease of use.
-
-The basic operations expects the same type of parameters:
-| Parameter | Description |
-| --- | --- |
-| mesh1 | First mesh |
-| mesh2 | Second mesh |
-| targetMaterial | (Optional) The material to use for the final mesh, can be a single material or an array of two materials. **Default**: A clone of the material of the first mesh |
-
-## Advanced Operations
+## Operations
 ### OctreeCSG.union:
 Merges two Octrees (octreeA and octreeB) to one Octree
 
