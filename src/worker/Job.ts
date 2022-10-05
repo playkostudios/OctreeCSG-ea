@@ -79,8 +79,6 @@ export default class Job {
             transferables,
         ];
 
-        console.debug(data);
-
         return data;
     }
 
@@ -93,7 +91,6 @@ export default class Job {
     }
 
     reject(error: JobError) {
-        console.debug('JOB REJECTED');
         this.rejectCallback(error);
     }
 }

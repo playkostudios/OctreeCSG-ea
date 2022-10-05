@@ -17,6 +17,7 @@ missing, such as directly operating with meshes and assigning materials.
 - [Array Operations](#array-operations)
 - [Asynchronous Operations](#asynchronous-operations)
 - [OctreeCSG Flags](#octreecsg-flags)
+- [Limitations](#limitations)
 - [Resources](#resources)
 
 ## Usage
@@ -124,6 +125,15 @@ The following flags and variables control how OctreeCSG operates.
 | OctreeCSG.useWindingNumber | false | Determines if to use the ray-triangle intersection algorithm or the [Winding number algorithm](https://en.wikipedia.org/wiki/Point_in_polygon#Winding_number_algorithm). The Winding number alogirthm can be more accurate than the ray-triangle algorithm on some occasions at the cost of performance. **Options**: true, false |
 | OctreeCSG.maxLevel | 16 | Maximum number of sub-Octree levels in the tree |
 | OctreeCSG.polygonsPerTree | 100 | Minimum number of polygons (triangles) in a sub-Octree before a split is needed |
+
+## Limitations
+The current worker script size is huge due to browser and esbuild limitations.
+Ideally, the worker script would share code with the rest of the library,
+however, esbuild code splitting is only available for ES6 modules, but
+[module workers are not yet supported on Firefox](https://bugzilla.mozilla.org/show_bug.cgi?id=1247687).
+
+As a workaround, the worker is bundled with the library and gl-matrix as an
+IIFE, which increases the size of the worker script dramatically.
 
 ## Resources
 - The Polygon, Vertex and Plane classes were adapted from [THREE-CSGMesh](https://github.com/manthrax/THREE-CSGMesh)

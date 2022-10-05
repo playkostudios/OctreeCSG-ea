@@ -51,7 +51,6 @@ globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
     switch(message.data.type) {
         case 'operation':
         {
-            console.log('GOT REQUEST', message.data);
             try {
                 const result = OctreeCSG.operation(
                     decodeOctreeCSGObject(message.data.operation),

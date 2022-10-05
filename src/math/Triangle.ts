@@ -1,8 +1,6 @@
-import { INV_EPSILON } from './const-numbers';
+import { INV_EPSILON, THIRD } from './const-numbers';
 
 import { vec3 } from 'gl-matrix';
-
-const THIRD = 1 / 3;
 
 export default class Triangle {
     private _midpoint?: vec3;
@@ -80,7 +78,6 @@ export default class Triangle {
     get hash(): number {
         // return cached version
         if (this._hash !== undefined) {
-            // console.warn('HASH WAS ALREADY CACHED')
             return this._hash;
         }
 

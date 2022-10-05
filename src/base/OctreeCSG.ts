@@ -42,7 +42,6 @@ class OctreeCSG {
     protected parent: OctreeCSG | null;
     protected level: number;
     protected polygonArrays: Polygon[][];
-    protected bounds?: Box3;
 
     static disposeOctree = true;
     static useWindingNumber = false;
@@ -111,33 +110,24 @@ class OctreeCSG {
             return this;
         }
 
-        if (!this.bounds) {
-            this.bounds = new Box3();
+        if (this.box) {
+            this.box.min[0] = Math.min(this.box.min[0], triangle.a[0], triangle.b[0], triangle.c[0]);
+            this.box.min[1] = Math.min(this.box.min[1], triangle.a[1], triangle.b[1], triangle.c[1]);
+            this.box.min[2] = Math.min(this.box.min[2], triangle.a[2], triangle.b[2], triangle.c[2]);
+            this.box.max[0] = Math.max(this.box.max[0], triangle.a[0], triangle.b[0], triangle.c[0]);
+            this.box.max[1] = Math.max(this.box.max[1], triangle.a[1], triangle.b[1], triangle.c[1]);
+            this.box.max[2] = Math.max(this.box.max[2], triangle.a[2], triangle.b[2], triangle.c[2]);
+        } else {
+            this.box = new Box3();
+            this.box.min[0] = Math.min(triangle.a[0], triangle.b[0], triangle.c[0]);
+            this.box.min[1] = Math.min(triangle.a[1], triangle.b[1], triangle.c[1]);
+            this.box.min[2] = Math.min(triangle.a[2], triangle.b[2], triangle.c[2]);
+            this.box.max[0] = Math.max(triangle.a[0], triangle.b[0], triangle.c[0]);
+            this.box.max[1] = Math.max(triangle.a[1], triangle.b[1], triangle.c[1]);
+            this.box.max[2] = Math.max(triangle.a[2], triangle.b[2], triangle.c[2]);
         }
-
-        this.bounds.min[0] = Math.min(this.bounds.min[0], triangle.a[0], triangle.b[0], triangle.c[0]);
-        this.bounds.min[1] = Math.min(this.bounds.min[1], triangle.a[1], triangle.b[1], triangle.c[1]);
-        this.bounds.min[2] = Math.min(this.bounds.min[2], triangle.a[2], triangle.b[2], triangle.c[2]);
-        this.bounds.max[0] = Math.max(this.bounds.max[0], triangle.a[0], triangle.b[0], triangle.c[0]);
-        this.bounds.max[1] = Math.max(this.bounds.max[1], triangle.a[1], triangle.b[1], triangle.c[1]);
-        this.bounds.max[2] = Math.max(this.bounds.max[2], triangle.a[2], triangle.b[2], triangle.c[2]);
 
         this.polygons.push(polygon);
-        return this;
-    }
-
-    protected calcBox() {
-        if (!this.bounds) {
-            this.bounds = new Box3();
-        }
-
-        this.box = this.bounds.clone();
-
-        // offset small ammount to account for regular grid
-        this.box.min[0] -= 0.01;
-        this.box.min[1] -= 0.01;
-        this.box.min[2] -= 0.01;
-
         return this;
     }
 
@@ -202,7 +192,6 @@ class OctreeCSG {
     }
 
     buildTree() {
-        this.calcBox();
         this.split(0);
         this.processTree();
 
@@ -212,8 +201,13 @@ class OctreeCSG {
     protected processTree() {
         if (!this.isEmpty()) {
             if (!this.box) {
-                throw new Error('Octree has no box');
+                this.box = new Box3();
             }
+
+            const firstPolygon = this.polygons[0];
+            const firstVertex = firstPolygon.triangle.a;
+            vec3.copy(this.box.min, firstVertex);
+            vec3.copy(this.box.max, firstVertex);
 
             for (const polygon of this.polygons) {
                 this.box.expandByPoint(polygon.triangle.a);
@@ -262,20 +256,24 @@ class OctreeCSG {
         return polygons;
     }
 
-    getRayPolygons(ray: Ray, polygons: Polygon[] = []) {
-        // XXX this looks like the perfect place to use a set instead of an
-        // array, but it's actually slower than just calling indexOf on an array
-        // (tested on firefox). this might change when the Set.addAll API is
-        // added
+    getRayPolygons(ray: Ray, polygons?: Set<Polygon>) {
+        // XXX if the replaced polygons array are not creating a new set, then
+        // using a set is actually slower than using an array and calling
+        // indexOf. when an API such as Set.addAll is added, then using a set
+        // will always be faster than an array. the average case
 
-        for (const polygon of this.polygons) {
-            if (polygon.valid && polygon.originalValid && polygons.indexOf(polygon) === -1) {
-                polygons.push(polygon);
+        if (polygons) {
+            for (const replacedPolygon of this.replacedPolygons) {
+                polygons.add(replacedPolygon);
             }
+        } else {
+            polygons = new Set(this.replacedPolygons);
         }
 
-        if (this.replacedPolygons.length > 0) {
-            polygons.push(...this.replacedPolygons);
+        for (const polygon of this.polygons) {
+            if (polygon.valid && polygon.originalValid) {
+                polygons.add(polygon);
+            }
         }
 
         for (const subTree of this.subTrees) {
@@ -294,7 +292,7 @@ class OctreeCSG {
 
         for (const polygon of this.getRayPolygons(ray)) {
             // MollerTrumbore
-            const result = rayIntersectsTriangle(ray, polygon.triangle, _v1);
+            const result = rayIntersectsTriangle(ray, polygon.triangle, polygon.plane.unsafeNormal, _v1);
             if (result) {
                 const newdistance = vec3.distance(result, ray.origin);
                 if (distance > newdistance) {
@@ -547,9 +545,7 @@ class OctreeCSG {
                         let intersects = targetOctree.rayIntersect(_ray);
                         if (intersects.length > 0 && vec3.dot(_rayDirection, intersects[0].polygon.plane.unsafeNormal) > 0) {
                             inside = true;
-                        }
-
-                        if (!inside && currentPolygon.coplanar) {
+                        } else if (currentPolygon.coplanar) {
                             for (const _wP_EPS of _wP_EPS_ARR) {
                                 vec3.add(_ray.origin, point, _wP_EPS);
                                 vec3.copy(_rayDirection, currentPolygon.plane.unsafeNormal);
@@ -645,11 +641,9 @@ class OctreeCSG {
     }
 
     applyMatrix(matrix: mat4, normalMatrix?: mat3, firstRun = true) {
-        if (!this.box) {
-            throw new Error('Octree has no box');
+        if (this.box) {
+            this.box = undefined;
         }
-
-        this.box.makeEmpty();
 
         if (!normalMatrix) {
             normalMatrix = mat3.normalFromMat4(tmpm3, matrix);
