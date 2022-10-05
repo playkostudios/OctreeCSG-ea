@@ -3,3 +3,5 @@
 *.sublime-workspace
 package-lock.json
 node_modules/
+lib/*.js
+lib/*.d.ts

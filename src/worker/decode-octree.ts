@@ -24,7 +24,9 @@ export default function decodeOctree(vertexBuffer: Float32Array, normalBuffer: F
         const c = new Vertex(vertexBuffer.slice(i, i + 3), normalBuffer.slice(i, i + 3));
         i += 3;
 
-        octree.addPolygon(new Polygon([a, b, c]));
+        const newPolygon = new Polygon([a, b, c]);
+        newPolygon.originalValid = true;
+        octree.addPolygon(newPolygon);
     }
 
     return octree;

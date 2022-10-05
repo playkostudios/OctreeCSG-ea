@@ -13,7 +13,8 @@
     "prepack": "npm run clean && npm run gen-types && npm run build"
   },
   "files": [
-    "lib"
+    "lib/*.d.ts",
+    "lib/*.js"
   ],
   "repository": {
     "type": "git",

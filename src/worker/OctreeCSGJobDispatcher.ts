@@ -23,7 +23,7 @@ export default class OctreeCSGJobDispatcher {
         return new Promise((resolve: (value: undefined) => void, reject: (reason: Error) => void) => {
             const timeout = setTimeout(() => {
                 worker.terminate();
-                reject(new Error('Worker creation timed out'));
+                reject(new Error('Timed out'));
             }, timeoutMS);
 
             const worker = new Worker(workerPath, { type: 'classic' });
@@ -38,7 +38,7 @@ export default class OctreeCSGJobDispatcher {
                     resolve(undefined); // XXX undefined so typescript shuts up
                 } else {
                     worker.terminate();
-                    reject(new Error('Unexpected worker initialization message'));
+                    reject(new Error('Unexpected initialization message'));
                 }
             }
         });
@@ -51,18 +51,18 @@ export default class OctreeCSGJobDispatcher {
 
             for (let i = 0; i < workerCount; i++) {
                 this.initWorker(workers, workerPath, timeoutMS).catch((reason: Error) => {
-                    console.error('Failed to initialize worker:', reason.message);
+                    console.error('Failed to create OctreeCSG worker:', reason.message);
                 }).finally(() => {
                     if (++workersDone === workerCount) {
                         const actualWorkerCount = workers.length;
 
                         if (actualWorkerCount === 0) {
-                            reject(new Error('All workers failed to be created'));
+                            reject(new Error('All OctreeCSG workers failed to be created'));
                             return;
                         } else if (actualWorkerCount !== workerCount) {
-                            console.warn(`Some workers failed to be created. Got ${actualWorkerCount} workers instead of ${workerCount}`);
+                            console.warn(`Some OctreeCSG workers failed to be created. Created ${actualWorkerCount} workers instead of ${workerCount}`);
                         } else {
-                            console.info(`Created ${actualWorkerCount} workers`);
+                            console.info(`Created ${actualWorkerCount} OctreeCSG workers`);
                         }
 
                         this.workers = workers;

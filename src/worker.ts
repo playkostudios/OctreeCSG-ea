@@ -81,5 +81,4 @@ globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
     }
 }
 
-console.debug('Worker started');
 postMessage('initialized');
