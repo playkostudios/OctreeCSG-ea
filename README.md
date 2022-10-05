@@ -7,22 +7,9 @@ Typescript. **This is very work-in-progress**.
 Because this is a stripped down version of the library, some features are
 missing, such as directly operating with meshes and assigning materials.
 
-# Original README (OctreeCSG)
-Constructive Solid Geometry (CSG) library for use with [three.js](https://github.com/mrdoob/three.js)\
-The OctreeCSG library is using the [Octree](https://en.wikipedia.org/wiki/Octree) data structure to store the geometry data for the [CSG](https://en.wikipedia.org/wiki/Constructive_solid_geometry) operations
-<br />
-
-All the code examples below can be tested live in [3dd.dev](https://3dd.dev)
-
 ### Table of Contents
 - [Usage](#usage)
-- [Basic Operations](#basic-operations)
-  - [OctreeCSG.meshUnion](#mesh-union-octreecsgmeshunion)
-  - [OctreeCSG.meshSubtract](#mesh-subtract-octreecsgmeshsubtract)
-  - [OctreeCSG.meshIntersect](#mesh-intersect-octreecsgmeshintersect)
-- [Advanced Operations](#advanced-operations)
-  - [OctreeCSG.fromMesh](#octreecsgfrommesh)
-  - [OctreeCSG.toMesh](#octreecsgtomesh)
+- [Operations](#operations)
   - [OctreeCSG.union](#octreecsgunion)
   - [OctreeCSG.subtract](#octreecsgsubtract)
   - [OctreeCSG.intersect](#octreecsgintersect)
@@ -30,7 +17,6 @@ All the code examples below can be tested live in [3dd.dev](https://3dd.dev)
 - [Array Operations](#array-operations)
 - [Asynchronous Operations](#asynchronous-operations)
 - [OctreeCSG Flags](#octreecsg-flags)
-- [Examples](#examples)
 - [Resources](#resources)
 
 ## Usage
