@@ -292,7 +292,7 @@ class OctreeCSG {
 
         for (const polygon of this.getRayPolygons(ray)) {
             // MollerTrumbore
-            const result = rayIntersectsTriangle(ray, polygon.triangle, polygon.plane.unsafeNormal, _v1);
+            const result = rayIntersectsTriangle(ray, polygon.triangle, _v1);
             if (result) {
                 const newdistance = vec3.distance(result, ray.origin);
                 if (distance > newdistance) {
@@ -868,7 +868,19 @@ class OctreeCSG {
     }
 
     static subtractArray(objArr: OctreeCSG[], materialIndexMax = Infinity) {
-        return arrayOperation(OctreeCSG.subtract, objArr, materialIndexMax);
+        // XXX subtraction is a special case; the leftmost element is subtracted
+        // with everything from the right, which means that:
+        // subtractArray(0 ... N) = subtract(0, union(1 ... N))
+        const objArrCount = objArr.length;
+        if (objArrCount === 0) {
+            throw new Error('Unable to find any result octree');
+        } else if (objArrCount === 1) {
+            return objArr[0];
+        } else if (objArrCount === 2) {
+            return OctreeCSG.subtract(objArr[0], objArr[1]);
+        } else {
+            return OctreeCSG.subtract(objArr[0], OctreeCSG.unionArray(objArr.slice(1), materialIndexMax));
+        }
     }
 
     static intersectArray(objArr: OctreeCSG[], materialIndexMax = Infinity) {
@@ -951,8 +963,20 @@ class OctreeCSG {
             return asyncArrayOperation(OctreeCSG.async.union, OctreeCSG.async.unionArray, objArr, materialIndexMax);
         },
 
-        subtractArray(objArr: OctreeCSG[], materialIndexMax = Infinity): Promise<OctreeCSG> {
-            return asyncArrayOperation(OctreeCSG.async.subtract, OctreeCSG.async.subtractArray, objArr, materialIndexMax);
+        async subtractArray(objArr: OctreeCSG[], materialIndexMax = Infinity): Promise<OctreeCSG> {
+            // XXX subtraction is a special case; the leftmost element is
+            // subtracted with everything from the right, which means that:
+            // subtractArray(0 ... N) = subtract(0, union(1 ... N))
+            const objArrCount = objArr.length;
+            if (objArrCount === 0) {
+                throw new Error('Unable to find any result octree');
+            } else if (objArrCount === 1) {
+                return objArr[0];
+            } else if (objArrCount === 2) {
+                return await OctreeCSG.async.subtract(objArr[0], objArr[1]);
+            } else {
+                return await OctreeCSG.async.subtract(objArr[0], await OctreeCSG.async.unionArray(objArr.slice(1), materialIndexMax));
+            }
         },
 
         intersectArray(objArr: OctreeCSG[], materialIndexMax = Infinity): Promise<OctreeCSG> {
@@ -1121,7 +1145,7 @@ function handlePolygonArrayIntersections(targetPolygon: Polygon, outputPolygons:
 }
 
 function arrayOperation(callback: (octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree?: boolean) => OctreeCSG, objArr: OctreeCSG[], materialIndexMax: number) {
-    const octreesArray = [];
+    let octreesArray = new Array<OctreeCSG>();
     const objArrLen = objArr.length;
 
     for (let i = 0; i < objArrLen; i++) {
@@ -1130,21 +1154,39 @@ function arrayOperation(callback: (octreeA: OctreeCSG, octreeB: OctreeCSG, build
         octreesArray.push(tempOctree);
     }
 
-    let octreeA = octreesArray.shift();
-    let octreeB = octreesArray.shift();
+    // XXX minimise the octree bounding box after each operation by applying an
+    // operation to pairs of octrees instead of applying it to the same octree
+    // over and over again (which results in a single octree with a giant
+    // bounding box), and trying to keep the same order. this works best when
+    // each octree in the array is ordered by their position
+    while (octreesArray.length > 1) {
+        const octreeCount = octreesArray.length;
+        const nextOctreeArray = new Array<OctreeCSG>();
 
-    while (octreeA && octreeB) {
-        const resultOctree = callback(octreeA, octreeB);
-        disposeOctree(octreeA, octreeB);
-        octreeA = resultOctree;
-        octreeB = octreesArray.shift();
+        // process pairs
+        let i = 0;
+        for (; i + 1 < octreeCount; i += 2) {
+            const octreeA = octreesArray[i];
+            const octreeB = octreesArray[i + 1];
+            const resultOctree = callback(octreeA, octreeB);
+            disposeOctree(octreeA, octreeB);
+            nextOctreeArray.push(resultOctree);
+        }
+
+        // add leftover octrees
+        if (i < octreeCount) {
+            nextOctreeArray.push(octreesArray[i]);
+        }
+
+        // next iteration array
+        octreesArray = nextOctreeArray;
     }
 
-    if (!octreeA) {
+    if (octreesArray.length === 0) {
         throw new Error('Unable to find any result octree');
     }
 
-    return octreeA;
+    return octreesArray[0];
 }
 
 async function asyncOperation(op: 'union' | 'subtract' | 'intersect', syncCallback: (octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree?: boolean) => OctreeCSG, octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree = true): Promise<OctreeCSG> {
