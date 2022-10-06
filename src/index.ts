@@ -9,4 +9,5 @@ export { Cube } from './primitives/Cube';
 export { CubeSphere, SpherifyPointFunction } from './primitives/CubeSphere';
 export { Sphere } from './primitives/Sphere';
 export { UVSphere } from './primitives/UVSphere';
+export { Cylinder } from './primitives/Cylinder';
 export { CSGPrimitive, CSGPrimitiveOptions } from './primitives/CSGPrimitive';
