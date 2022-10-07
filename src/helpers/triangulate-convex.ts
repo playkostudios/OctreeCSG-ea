@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import Vertex from './Vertex';
+import Vertex from '../math/Vertex';
 
 export default function triangulateConvexPolygon(vertices: Array<Vertex>, flip = false, output?: Array<Vertex>, startIndex = 0): [Array<Vertex>, number] {
     // XXX assume that the vertices in the polyline are already in CCW order

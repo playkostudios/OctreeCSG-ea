@@ -1,7 +1,7 @@
 import { vec3 } from 'gl-matrix';
 
 import Vertex from '../math/Vertex';
-import triangulateConvexPolygon from '../math/triangulate-convex';
+import triangulateConvexPolygon from '../helpers/triangulate-convex';
 import { TAU } from '../math/const-numbers';
 
 export type CircularPrecalcArr = Array<[x: number, z: number, normal?: vec3]>;
