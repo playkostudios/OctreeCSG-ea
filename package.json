@@ -4,6 +4,7 @@
   "description": "Engine-agnostic port of the OctreeCSG library",
   "exports": "./lib/OctreeCSG-ea.esm.min.js",
   "types": "lib/index.d.ts",
+  "type": "module",
   "scripts": {
     "test": "mocha",
     "lint": "eslint . --ext .ts",

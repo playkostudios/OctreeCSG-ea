@@ -34,7 +34,7 @@ interface RayIntersect {
     position: vec3
 }
 
-class OctreeCSG {
+export default class OctreeCSG {
     protected polygons: Polygon[];
     protected replacedPolygons: Polygon[];
     protected box?: Box3;
@@ -335,7 +335,9 @@ class OctreeCSG {
     invert() {
         for(const polygonsArray of this.polygonArrays) {
             for(const polygon of polygonsArray) {
-                polygon.flip();
+                if (polygon.valid) {
+                    polygon.flip();
+                }
             }
         }
     }
@@ -1311,5 +1313,3 @@ function asyncArrayOperation(singleCallback: (octreeA: OctreeCSG, octreeB: Octre
         }
     });
 }
-
-export default OctreeCSG;
