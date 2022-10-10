@@ -17,5 +17,5 @@ export { Icosahedron } from './primitives/Icosahedron';
 export { Icosphere } from './primitives/Icosphere';
 export { Torus } from './primitives/Torus';
 export { default as CircularBaseCSGPrimitiveOptions } from './primitives/CircularBaseCSGPrimitiveOptions';
-export { default as triangulateConvexPolygon } from './helpers/triangulate-convex';
+export { default as triangulateConvexPolygon } from './helpers/triangulate-convex-polygon';
 export { default as linearExtrude } from './helpers/linear-extrusion-helper';
