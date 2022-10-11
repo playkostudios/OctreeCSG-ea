@@ -87,7 +87,8 @@ export default function curveExtrude(polyline: Array<vec2>, positions: Array<vec
 
     let lastMat = mat4.create(), lastMatNormal = mat3.create(), curMat = mat4.create(), curMatNormal = mat3.create();
     makeSlice(curSlice, curMat, polyline, positions[0], ...frames[0]);
-    mat3.normalFromMat4(curMatNormal, curMat);
+    // XXX don't use normalFromMat4 or you will always get identity matrices
+    mat3.fromMat4(curMatNormal, curMat);
 
     // pre-calculate untransformed normals of each edge in the polyline
     const edgeNormals = new Array(sliceVertices), vertexNormals = new Array(sliceVertices);
@@ -127,11 +128,13 @@ export default function curveExtrude(polyline: Array<vec2>, positions: Array<vec
         // calculate slice for this point
         [lastSlice, curSlice, lastMat, curMat, lastMatNormal, curMatNormal] = [curSlice, lastSlice, curMat, lastMat, curMatNormal, lastMatNormal];
         makeSlice(curSlice, curMat, polyline, positions[i], ...frames[i]);
-        mat3.normalFromMat4(lastMatNormal, lastMat);
+        // XXX don't use normalFromMat4 or you will always get identity matrices
+        mat3.fromMat4(curMatNormal, curMat);
 
         // make segment triangles
         for (let j = 0; j < sliceVertices; j++) {
             const k = (j + 1) % sliceVertices;
+
             // make normals
             const lastNormalA = vec3.clone(vertexNormals[j]);
             vec3.transformMat3(lastNormalA, lastNormalA, lastMatNormal);
