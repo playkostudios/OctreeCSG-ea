@@ -2,9 +2,6 @@ import { vec2 } from 'gl-matrix';
 import sort2DIndices from './sort-2d-indices';
 
 export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, output?: Array<vec2>): Array<vec2> {
-    // using monotone polygon triangulation algorithm from a book:
-    // Computational Geometry: Algorithms and Applications (second edition,
-    // section 3.3), by Mark de Berg, Marc van Krefeld, and Mark Overmars
     const vertexCount = polyline.length;
 
     // fast paths (and error conditions):
@@ -12,40 +9,48 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
         throw new Error(`Expected input polyline with 3 or more vertices, got ${vertexCount}`);
     }
 
-    if (!output) {
-        output = new Array((vertexCount - 2) * 3);
+    const outputSize = (vertexCount - 2) * 3;
+    if (output) {
+        if (output.length < outputSize) {
+            output.length = outputSize;
+        }
+    } else {
+        output = new Array(outputSize);
     }
 
-    let index = 0;
     if (vertexCount === 3) {
         // already a triangle, copy it
-        output[index++] = vec2.clone(polyline[0]);
-        output[index++] = vec2.clone(polyline[1]);
-        output[index++] = vec2.clone(polyline[2]);
+        output[0] = vec2.clone(polyline[0]);
+        output[1] = vec2.clone(polyline[1]);
+        output[2] = vec2.clone(polyline[2]);
 
         return output;
     } else if (vertexCount === 4) {
         // triangulate a square. special case that avoids sliver triangles
-        output[index++] = vec2.clone(polyline[0]);
-        output[index++] = vec2.clone(polyline[1]);
-        output[index++] = vec2.clone(polyline[2]);
+        output[0] = vec2.clone(polyline[0]);
+        output[1] = vec2.clone(polyline[1]);
+        output[2] = vec2.clone(polyline[2]);
 
         if (vec2.squaredDistance(polyline[0], polyline[2]) <= vec2.squaredDistance(polyline[1], polyline[3])) {
-            output[index++] = vec2.clone(polyline[0]);
+            output[3] = vec2.clone(polyline[0]);
         } else {
-            output[index++] = vec2.clone(polyline[1]);
+            output[3] = vec2.clone(polyline[1]);
         }
 
-        output[index++] = vec2.clone(polyline[2]);
-        output[index++] = vec2.clone(polyline[3]);
+        output[4] = vec2.clone(polyline[2]);
+        output[5] = vec2.clone(polyline[3]);
 
         return output;
     }
 
-    // general case: use monotone polygon sweep algorithm
+    // general case: using monotone polygon triangulation algorithm from a book:
+    // Computational Geometry: Algorithms and Applications (second edition,
+    // section 3.3), by Mark de Berg, Marc van Krefeld, and Mark Overmars
+
     // sort vertices by XY respectively
     const indices = sort2DIndices(polyline);
     let stack = [indices[0], indices[1]];
+    let iOut = 0;
 
     for (let i = 2; i < vertexCount - 1; i++) {
         const thisIndex = indices[i];
@@ -56,29 +61,24 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
         const topVertex = polyline[topIndex];
 
         if ((thisIndex !== (topIndex + 1) % vertexCount) && (topIndex !== (thisIndex + 1) % vertexCount)) {
-            console.warn('case 1');
             for (let j = 0; j < stackLen - 1; j++) {
-                console.warn('push 1', stackLen);
                 const jIndex = stack[j];
                 const j1Index = stack[j + 1];
-                output[index++] = vec2.clone(thisVertex);
+                output[iOut++] = vec2.clone(thisVertex);
 
                 if (j1Index > jIndex) {
-                    output[index++] = vec2.clone(polyline[jIndex]);
-                    output[index++] = vec2.clone(polyline[j1Index]);
+                    output[iOut++] = vec2.clone(polyline[jIndex]);
+                    output[iOut++] = vec2.clone(polyline[j1Index]);
                 } else {
-                    output[index++] = vec2.clone(polyline[j1Index]);
-                    output[index++] = vec2.clone(polyline[jIndex]);
+                    output[iOut++] = vec2.clone(polyline[j1Index]);
+                    output[iOut++] = vec2.clone(polyline[jIndex]);
                 }
             }
 
             stack = [indices[i - 1], thisIndex];
-            console.warn('stack clear + push i-1, thisIndex')
         } else {
-            console.warn('case 2');
             let lastPoppedVertex = topVertex;
             let lastPoppedIndex = stack.pop();
-            console.warn('stack pop')
             while (stack.length > 0) {
                 const nextPoppedIndex = stack[stack.length - 1];
                 const nextPoppedVertex = polyline[nextPoppedIndex];
@@ -104,28 +104,24 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
 
                 lastPoppedIndex = nextPoppedIndex;
                 stack.pop();
-                console.warn('stack pop')
 
-                console.warn('push 2');
-                output[index++] = vec2.clone(thisVertex);
+                output[iOut++] = vec2.clone(thisVertex);
 
                 if (nextPoppedIndex > lastPoppedIndex) {
-                    output[index++] = vec2.clone(nextPoppedVertex);
-                    output[index++] = vec2.clone(lastPoppedVertex);
+                    output[iOut++] = vec2.clone(nextPoppedVertex);
+                    output[iOut++] = vec2.clone(lastPoppedVertex);
                 } else {
-                    output[index++] = vec2.clone(lastPoppedVertex);
-                    output[index++] = vec2.clone(nextPoppedVertex);
+                    output[iOut++] = vec2.clone(lastPoppedVertex);
+                    output[iOut++] = vec2.clone(nextPoppedVertex);
                 }
 
                 lastPoppedVertex = nextPoppedVertex;
             }
 
             if (lastPoppedIndex !== undefined) {
-                console.warn('stack push lastPoppedIndex')
                 stack.push(lastPoppedIndex);
             }
 
-            console.warn('stack push thisIndex')
             stack.push(thisIndex);
         }
     }
@@ -134,21 +130,18 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
     const iterLen = stack.length - 1;
 
     for (let i = 0; i < iterLen; i++) {
-        console.warn('leftover');
-        output[index++] = vec2.clone(lastVertex);
+        output[iOut++] = vec2.clone(lastVertex);
         const iIndex = stack[i];
         const i1Index = stack[i + 1];
 
         if (i1Index > iIndex) {
-            output[index++] = vec2.clone(polyline[i1Index]);
-            output[index++] = vec2.clone(polyline[iIndex]);
+            output[iOut++] = vec2.clone(polyline[i1Index]);
+            output[iOut++] = vec2.clone(polyline[iIndex]);
         } else {
-            output[index++] = vec2.clone(polyline[iIndex]);
-            output[index++] = vec2.clone(polyline[i1Index]);
+            output[iOut++] = vec2.clone(polyline[iIndex]);
+            output[iOut++] = vec2.clone(polyline[i1Index]);
         }
     }
-
-    console.log(output);
 
     return output;
 }

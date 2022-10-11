@@ -57,7 +57,6 @@ export default function linearExtrude(polyline: Array<vec2>, depth: number, incl
     if (includeBases) {
         // make monotone partitions from polygon
         const partitions = partition2DPolygon(polyline);
-        console.log('partitions', partitions)
 
         for (const partition of partitions) {
             const triangulated = triangulateMonotone2DPolygon(partition);

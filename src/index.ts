@@ -19,3 +19,8 @@ export { Torus } from './primitives/Torus';
 export { default as CircularBaseCSGPrimitiveOptions } from './primitives/CircularBaseCSGPrimitiveOptions';
 export { default as triangulateConvexPolygon } from './helpers/triangulate-convex-polygon';
 export { default as linearExtrude } from './helpers/linear-extrusion-helper';
+export { default as isClockwise2DPolygon } from './helpers/is-clockwise-2d-polygon';
+export { default as partition2DPolygon } from './helpers/partition-2d-polygon';
+export { default as split2DPolygon } from './helpers/split-2d-polygon';
+export { default as triangulate2DPolygon } from './helpers/triangulate-2d-polygon';
+export { default as triangulateMonotone2DPolygon } from './helpers/triangulate-monotone-2d-polygon';

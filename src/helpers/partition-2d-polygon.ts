@@ -1,7 +1,7 @@
 import { vec2 } from 'gl-matrix';
 import { TAU } from '../math/const-numbers';
 import sort2DIndices from './sort-2d-indices';
-import splitPolygon from './split-polygon';
+import split2DPolygon from './split-2d-polygon';
 
 enum VertexType {
     Start,
@@ -12,32 +12,50 @@ enum VertexType {
 }
 
 function isAbove(p: vec2, q: vec2) {
-    return p[0] > q[0] || (p[0] === q[0] && p[1] < q[1]);
+    return p[0] < q[0] || (p[0] === q[0] && p[1] < q[1]);
 }
 
 function interiorAngle(prev: vec2, cur: vec2, next: vec2) {
-    const prevAngle = Math.atan2(prev[1] - cur[1], prev[0] - cur[0]);
-    const nextAngle = Math.atan2(next[1] - cur[1], next[0] - cur[0]);
-    return (nextAngle - prevAngle) % TAU;
+    // XXX angles must be negated due to CCW winding order
+    const prevAngle = -Math.atan2(prev[1] - cur[1], prev[0] - cur[0]);
+    const nextAngle = -Math.atan2(next[1] - cur[1], next[0] - cur[0]);
+    // XXX mod used instead of remainder because angles can be negative
+    return (((nextAngle - prevAngle) % TAU) + TAU) % TAU;
 }
 
 function getLeftEdge(polyline: Array<vec2>, status: Set<number>, vertexCount: number, vertex: vec2) {
     let leftEdge = -1;
+    let leftY = -Infinity;
+
     for (const lineStartIndex of status) {
-        const lineStart = polyline[lineStartIndex];
         const lineEndIndex = (lineStartIndex + 1) % vertexCount;
+        const lineStart = polyline[lineStartIndex];
         const lineEnd = polyline[lineEndIndex];
 
-        if (vertex[0] >= lineStart[0] && vertex[0] <= lineEnd[0]) {
-            // y = mx + c; m = dy / dx
-            const m = (lineEnd[1] - lineStart[1]) / (lineEnd[0] - lineStart[0]);
-            const y = m * vertex[0] + lineStart[0];
+        let lineMin, lineMax;
+        if (lineStart[0] > lineEnd[0]) {
+            lineMin = lineEnd;
+            lineMax = lineStart;
+        } else {
+            lineMax = lineEnd;
+            lineMin = lineStart;
+        }
 
-            if (y < vertex[1]) {
+        if (vertex[0] >= lineMin[0] && vertex[0] <= lineMax[0]) {
+            // y = mx + c; m = dy / dx; c = y - mx
+            const m = (lineMax[1] - lineMin[1]) / (lineMax[0] - lineMin[0]);
+            const c = lineMin[1] - m * lineMin[0];
+            const y = m * vertex[0] + c;
+
+            if (y <= vertex[1] && y >= leftY) {
+                leftY = y;
                 leftEdge = lineStartIndex;
-                break;
             }
         }
+    }
+
+    if (leftEdge === -1) {
+        throw new Error(`No edge to the left of vertex. Status: ${Array.from(status)}`);
     }
 
     return leftEdge;
@@ -47,9 +65,6 @@ export default function partition2DPolygon(polyline: Array<vec2>, output?: Array
     // using monotone polygon partitioning algorithm from a book:
     // Computational Geometry: Algorithms and Applications (second edition,
     // section 3.2), by Mark de Berg, Marc van Krefeld, and Mark Overmars
-    if (!output) {
-        output = [];
-    }
 
     // sort vertices in polyline. since our triangulation algorithm sweeps from
     // -X to +X, sort by X values and then Y values, instead of Y then X from
@@ -62,7 +77,6 @@ export default function partition2DPolygon(polyline: Array<vec2>, output?: Array
 
     for (const index of sort2DIndices(polyline)) {
         // get vertex type
-        console.log(index);
         const prevIndex = ((index - 1 % vertexCount) + vertexCount) % vertexCount;
         const nextIndex = (index + 1) % vertexCount;
         const prevVertex = polyline[prevIndex];
@@ -151,5 +165,5 @@ export default function partition2DPolygon(polyline: Array<vec2>, output?: Array
 
     // get all partitions by finding all loops in the graph made by the original
     // polyline and diagonals
-    return splitPolygon(polyline, diagonals);
+    return split2DPolygon(polyline, diagonals, output);
 }

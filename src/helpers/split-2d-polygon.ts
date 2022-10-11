@@ -4,12 +4,14 @@ function getPolygonInLoop(indices: Array<number>, start: number, end: number): A
     const indexCount = indices.length;
     const output: Array<number> = [start];
 
-    for (let i = indices.indexOf(start) + 1;; i = (i + 1) % indexCount) {
+    for (let i = (indices.indexOf(start) + 1) % indexCount;; i = (i + 1) % indexCount) {
         const actualIndex = indices[i];
         output.push(actualIndex);
 
         if (actualIndex === end) {
             return output;
+        } else if (actualIndex === start) {
+            throw new Error(`getPolygonInLoop aborted; infinite loop detected due to possibly invalid split diagonal (${start}, ${end})`);
         }
     }
 }
@@ -29,8 +31,10 @@ function splitPolygonTo(polyline: Array<vec2>, indices: Array<number>, diagonals
 
             if (aIndices.indexOf(oStart) >= 0 && aIndices.indexOf(oEnd) >= 0) {
                 aDiags.push([oStart, oEnd]);
-            } else {
+            } else if (bIndices.indexOf(oStart) >= 0 && bIndices.indexOf(oEnd) >= 0) {
                 bDiags.push([oStart, oEnd]);
+            } else {
+                throw new Error(`Invalid split diagonal (${oStart}, ${oEnd})`);
             }
         }
 
@@ -49,8 +53,11 @@ function splitPolygonTo(polyline: Array<vec2>, indices: Array<number>, diagonals
     }
 }
 
-export default function splitPolygon(polyline: Array<vec2>, diagonals: Array<[number, number]>): Array<Array<vec2>> {
-    const output = new Array<Array<vec2>>();
+export default function split2DPolygon(polyline: Array<vec2>, diagonals: Array<[number, number]>, output?: Array<Array<vec2>>): Array<Array<vec2>> {
+    if (!output) {
+        output = [];
+    }
+
     splitPolygonTo(polyline, Array.from({ length: polyline.length }, (_, i) => i), diagonals, output);
     return output;
 }
