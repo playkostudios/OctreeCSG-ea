@@ -60,7 +60,7 @@ export default function linearExtrude(polyline: Array<vec2>, depth: number, incl
         const partitions = partition2DPolygon(polyline, undefined, isClockwiseHint);
 
         for (const partition of partitions) {
-            const triangulated = triangulateMonotone2DPolygon(partition, undefined, isClockwiseHint);
+            const [triangulated, _endIndex] = triangulateMonotone2DPolygon(partition, undefined, 0, isClockwiseHint);
             const triVertCount = triangulated.length;
 
             let normal1 = vec3.fromValues(0, 0, -1);

@@ -24,3 +24,4 @@ export { default as partition2DPolygon } from './helpers/partition-2d-polygon';
 export { default as split2DPolygon } from './helpers/split-2d-polygon';
 export { default as triangulate2DPolygon } from './helpers/triangulate-2d-polygon';
 export { default as triangulateMonotone2DPolygon } from './helpers/triangulate-monotone-2d-polygon';
+export { default as curveExtrude } from './helpers/curve-extrusion-helper';

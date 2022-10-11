@@ -20,8 +20,9 @@ export default function triangulate2DPolygon(polyline: Array<vec2>, output?: Arr
         output = new Array(outputSize);
     }
 
+    let index = 0;
     for (const partition of partitions) {
-        triangulateMonotone2DPolygon(partition, output, isClockwiseHint);
+        [output, index] = triangulateMonotone2DPolygon(partition, output, index, isClockwiseHint);
     }
 
     return output;
