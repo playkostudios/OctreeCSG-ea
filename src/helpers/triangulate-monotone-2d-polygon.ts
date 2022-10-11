@@ -1,7 +1,24 @@
 import { vec2 } from 'gl-matrix';
+import { tv0_2, tv1_2 } from '../math/temp';
+import isClockwise2DPolygon from './is-clockwise-2d-polygon';
+import isClockwise2DTriangle from './is-clockwise-2d-triangle';
 import sort2DIndices from './sort-2d-indices';
 
-export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, output?: Array<vec2>): Array<vec2> {
+function addTriangle(output: Array<vec2>, index: number, clockwise: boolean, a: vec2, b: vec2, c: vec2): number {
+    output[index++] = a;
+
+    if (isClockwise2DTriangle(a, b, c) === clockwise) {
+        output[index++] = b;
+        output[index++] = c;
+    } else {
+        output[index++] = c;
+        output[index++] = b;
+    }
+
+    return index;
+}
+
+export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, output?: Array<vec2>, isClockwiseHint?: boolean): Array<vec2> {
     const vertexCount = polyline.length;
 
     // fast paths (and error conditions):
@@ -47,6 +64,13 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
     // Computational Geometry: Algorithms and Applications (second edition,
     // section 3.3), by Mark de Berg, Marc van Krefeld, and Mark Overmars
 
+    // XXX triangle orientation is very chaotic, so it is properly oriented
+    // when inserting each triangle in the output instead of relying of the
+    // algorithm's scan order
+    if (isClockwiseHint === undefined) {
+        isClockwiseHint = isClockwise2DPolygon(polyline);
+    }
+
     // sort vertices by XY respectively
     const indices = sort2DIndices(polyline);
     let stack = [indices[0], indices[1]];
@@ -61,24 +85,16 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
         const topVertex = polyline[topIndex];
 
         if ((thisIndex !== (topIndex + 1) % vertexCount) && (topIndex !== (thisIndex + 1) % vertexCount)) {
+            // opposite chains
             for (let j = 0; j < stackLen - 1; j++) {
-                const jIndex = stack[j];
-                const j1Index = stack[j + 1];
-                output[iOut++] = vec2.clone(thisVertex);
-
-                if (j1Index > jIndex) {
-                    output[iOut++] = vec2.clone(polyline[jIndex]);
-                    output[iOut++] = vec2.clone(polyline[j1Index]);
-                } else {
-                    output[iOut++] = vec2.clone(polyline[j1Index]);
-                    output[iOut++] = vec2.clone(polyline[jIndex]);
-                }
+                iOut = addTriangle(output, iOut, isClockwiseHint, thisVertex, vec2.clone(polyline[stack[j]]), vec2.clone(polyline[stack[j + 1]]));
             }
 
             stack = [indices[i - 1], thisIndex];
         } else {
+            // same chain
             let lastPoppedVertex = topVertex;
-            let lastPoppedIndex = stack.pop();
+            let lastPoppedIndex = stack.pop() as number;
             while (stack.length > 0) {
                 const nextPoppedIndex = stack[stack.length - 1];
                 const nextPoppedVertex = polyline[nextPoppedIndex];
@@ -88,33 +104,23 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
                 // 1. get direction from vertex before popped, to popped
                 const beforePoppedIndex = (((nextPoppedIndex - 1) % vertexCount) + vertexCount) % vertexCount;
                 const beforePoppedVertex = polyline[beforePoppedIndex];
-                const dir = vec2.sub(vec2.create(), nextPoppedVertex, beforePoppedVertex);
+                const dir = vec2.sub(tv0_2, nextPoppedVertex, beforePoppedVertex);
 
                 // 2. get left of direction (inside direction, since CCW's
                 // inside is to the left)
                 const insideDir = vec2.fromValues(-dir[1], dir[0]);
 
                 // 3. get direction from verted before popped to current vertex
-                const curDir = vec2.sub(vec2.create(), thisVertex, beforePoppedVertex);
+                const curDir = vec2.sub(tv1_2, thisVertex, beforePoppedVertex);
 
                 // 4. check if to the left of direction (inside). if not, break
                 if (vec2.dot(curDir, insideDir) <= 0) {
                     break;
                 }
 
-                lastPoppedIndex = nextPoppedIndex;
                 stack.pop();
-
-                output[iOut++] = vec2.clone(thisVertex);
-
-                if (nextPoppedIndex > lastPoppedIndex) {
-                    output[iOut++] = vec2.clone(nextPoppedVertex);
-                    output[iOut++] = vec2.clone(lastPoppedVertex);
-                } else {
-                    output[iOut++] = vec2.clone(lastPoppedVertex);
-                    output[iOut++] = vec2.clone(nextPoppedVertex);
-                }
-
+                iOut = addTriangle(output, iOut, isClockwiseHint, thisVertex, vec2.clone(lastPoppedVertex), vec2.clone(nextPoppedVertex));
+                lastPoppedIndex = nextPoppedIndex;
                 lastPoppedVertex = nextPoppedVertex;
             }
 
@@ -130,17 +136,7 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
     const iterLen = stack.length - 1;
 
     for (let i = 0; i < iterLen; i++) {
-        output[iOut++] = vec2.clone(lastVertex);
-        const iIndex = stack[i];
-        const i1Index = stack[i + 1];
-
-        if (i1Index > iIndex) {
-            output[iOut++] = vec2.clone(polyline[i1Index]);
-            output[iOut++] = vec2.clone(polyline[iIndex]);
-        } else {
-            output[iOut++] = vec2.clone(polyline[iIndex]);
-            output[iOut++] = vec2.clone(polyline[i1Index]);
-        }
+        iOut = addTriangle(output, iOut, isClockwiseHint, vec2.clone(lastVertex), vec2.clone(polyline[stack[i]]), vec2.clone(polyline[stack[i + 1]]));
     }
 
     return output;

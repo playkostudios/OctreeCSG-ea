@@ -16,7 +16,7 @@ function getPolygonInLoop(indices: Array<number>, start: number, end: number): A
     }
 }
 
-function splitPolygonTo(polyline: Array<vec2>, indices: Array<number>, diagonals: Array<[number, number]>, output: Array<Array<vec2>>) {
+function splitPolygonTo(polyline: Array<vec2>, indices: Array<number>, diagonals: Array<[number, number]>, output: Array<Array<vec2>>, flip: boolean) {
     if (diagonals.length > 0) {
         // split along first diagonal
         const [start, end] = diagonals[0];
@@ -39,25 +39,32 @@ function splitPolygonTo(polyline: Array<vec2>, indices: Array<number>, diagonals
         }
 
         // further split
-        splitPolygonTo(polyline, aIndices, aDiags, output);
-        splitPolygonTo(polyline, bIndices, bDiags, output);
+        splitPolygonTo(polyline, aIndices, aDiags, output, flip);
+        splitPolygonTo(polyline, bIndices, bDiags, output, flip);
     } else {
         // no more diagonals, make actual polyline
         const indexCount = indices.length;
         const outPolyline = new Array(indexCount);
-        for (let i = 0; i < indexCount; i++) {
-            outPolyline[i] = polyline[indices[i]];
+
+        if (flip) {
+            for (let i = 0; i < indexCount; i++) {
+                outPolyline[i] = polyline[indices[indexCount - 1 - i]];
+            }
+        } else {
+            for (let i = 0; i < indexCount; i++) {
+                outPolyline[i] = polyline[indices[i]];
+            }
         }
 
         output.push(outPolyline);
     }
 }
 
-export default function split2DPolygon(polyline: Array<vec2>, diagonals: Array<[number, number]>, output?: Array<Array<vec2>>): Array<Array<vec2>> {
+export default function split2DPolygon(polyline: Array<vec2>, diagonals: Array<[number, number]>, output?: Array<Array<vec2>>, flip = false): Array<Array<vec2>> {
     if (!output) {
         output = [];
     }
 
-    splitPolygonTo(polyline, Array.from({ length: polyline.length }, (_, i) => i), diagonals, output);
+    splitPolygonTo(polyline, Array.from({ length: polyline.length }, (_, i) => i), diagonals, output, flip);
     return output;
 }

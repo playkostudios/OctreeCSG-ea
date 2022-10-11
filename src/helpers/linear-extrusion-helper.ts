@@ -56,10 +56,11 @@ export default function linearExtrude(polyline: Array<vec2>, depth: number, incl
     // happens towards +Z
     if (includeBases) {
         // make monotone partitions from polygon
-        const partitions = partition2DPolygon(polyline);
+        const isClockwiseHint = isClockwise2DPolygon(polyline);
+        const partitions = partition2DPolygon(polyline, undefined, isClockwiseHint);
 
         for (const partition of partitions) {
-            const triangulated = triangulateMonotone2DPolygon(partition);
+            const triangulated = triangulateMonotone2DPolygon(partition, undefined, isClockwiseHint);
             const triVertCount = triangulated.length;
 
             let normal1 = vec3.fromValues(0, 0, -1);

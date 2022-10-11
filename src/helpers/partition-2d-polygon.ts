@@ -1,5 +1,6 @@
 import { vec2 } from 'gl-matrix';
 import { TAU } from '../math/const-numbers';
+import isClockwise2DPolygon from './is-clockwise-2d-polygon';
 import sort2DIndices from './sort-2d-indices';
 import split2DPolygon from './split-2d-polygon';
 
@@ -61,17 +62,31 @@ function getLeftEdge(polyline: Array<vec2>, status: Set<number>, vertexCount: nu
     return leftEdge;
 }
 
-export default function partition2DPolygon(polyline: Array<vec2>, output?: Array<Array<vec2>>) {
+export default function partition2DPolygon(polyline: Array<vec2>, output?: Array<Array<vec2>>, isClockwiseHint?: boolean) {
     // using monotone polygon partitioning algorithm from a book:
     // Computational Geometry: Algorithms and Applications (second edition,
     // section 3.2), by Mark de Berg, Marc van Krefeld, and Mark Overmars
+
+    // XXX the algorithm assumes that the input polygon is CCW, but sometimes it
+    // isn't because a uses wants to make, for example, an inverted extrusion.
+    // check for this case
+    if (isClockwiseHint === undefined) {
+        isClockwiseHint = isClockwise2DPolygon(polyline);
+    }
+
+    if (isClockwiseHint) {
+        polyline = polyline.slice().reverse();
+    }
 
     // sort vertices in polyline. since our triangulation algorithm sweeps from
     // -X to +X, sort by X values and then Y values, instead of Y then X from
     // the original algorithm
     const vertexCount = polyline.length;
     const helpers = new Map<number, number>();
-    const status = new Set<number>(); // TODO use BST
+    // XXX the original algorithm uses a BST for the status container instead of
+    // a set, but performance has been OK with a set. maybe change in the
+    // future?
+    const status = new Set<number>();
     const types = new Map<number, VertexType>();
     const diagonals = new Array<[number, number]>();
 
@@ -165,5 +180,5 @@ export default function partition2DPolygon(polyline: Array<vec2>, output?: Array
 
     // get all partitions by finding all loops in the graph made by the original
     // polyline and diagonals
-    return split2DPolygon(polyline, diagonals, output);
+    return split2DPolygon(polyline, diagonals, output, isClockwiseHint);
 }
