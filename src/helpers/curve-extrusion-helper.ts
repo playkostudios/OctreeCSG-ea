@@ -1,4 +1,4 @@
-import { mat3, mat4, vec2, vec3 } from 'gl-matrix';
+import { mat3, mat4, vec2, vec3, vec4 } from 'gl-matrix';
 import OctreeCSG from '../base/OctreeCSG';
 import Plane from '../math/Plane';
 import { Polygon } from '../math/Polygon';
@@ -11,10 +11,10 @@ function makeSlice(output: Array<vec3>, outputMat: mat4, polyline: Array<vec2>, 
     // make matrix from position and frame
     mat4.set(
         outputMat,
-        s[0], r[0], t[0], 0,
-        s[1], r[1], t[1], 0,
-        s[2], r[2], t[2], 0,
-        position[0], position[1], position[2], 0
+        s[0], s[1], s[2], 0,
+        r[0], r[1], r[2], 0,
+        t[0], t[1], t[2], 0,
+        position[0], position[1], position[2], 1
     );
 
     // transform polyline to make slice
@@ -22,6 +22,7 @@ function makeSlice(output: Array<vec3>, outputMat: mat4, polyline: Array<vec2>, 
     for (let i = 0; i < sliceVerts; i++) {
         const outputVec = output[i];
         vec2.copy(outputVec as vec2, polyline[i]);
+        outputVec[2] = 0;
         vec3.transformMat4(outputVec, outputVec, outputMat);
     }
 }
@@ -58,19 +59,35 @@ function makeBase(octree: OctreeCSG, triangulatedBase: Array<vec2>, mat: mat4, b
     }
 }
 
-export default function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, frames: Array<[r: vec3, s: vec3, t: vec3]>, includeBases = true) {
-    // TODO use rotation minimizing frames:
-    // https://www.microsoft.com/en-us/research/publication/computation-rotation-minimizing-frames/
+export interface CurveExtrusionOptions {
+    includeBases?: boolean;
+    smoothNormals?: boolean;
+    // TODO remove this, maybe?:
+    debugDrawer?: (origin: vec3, direction: vec3, rgba: vec4) => void;
+}
 
+export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, frames: Array<[r: vec3, s: vec3, t: vec3]>, options?: CurveExtrusionOptions) {
+    // TODO optionally flat normals
     // validate curve
     const pointCount = positions.length;
 
     if (frames.length !== pointCount) {
-        throw new Error('There must be one frame per point');
+        throw new Error('There must be at least one frame per point');
     }
 
     if (pointCount < 2) {
         throw new Error('There must be at least 1 segment (2 points) in the curve');
+    }
+
+    // debug lines
+    const debugDrawer = options?.debugDrawer;
+    if (debugDrawer) {
+        for (let i = 0; i < pointCount; i++) {
+            const [r, s, t] = frames[i];
+            debugDrawer(positions[i], r, [1, 0, 0, 1]);
+            debugDrawer(positions[i], s, [0, 0, 1, 1]);
+            debugDrawer(positions[i], t, [0, 1, 0, 1]);
+        }
     }
 
     // output:
@@ -91,7 +108,7 @@ export default function curveExtrude(polyline: Array<vec2>, positions: Array<vec
     mat3.fromMat4(curMatNormal, curMat);
 
     // pre-calculate untransformed normals of each edge in the polyline
-    const edgeNormals = new Array(sliceVertices), vertexNormals = new Array(sliceVertices);
+    const edgeNormals = new Array<vec3>(sliceVertices);
 
     vec3.set(tv0, 0, 0, 1);
     for (let i = 0; i < sliceVertices; i++) {
@@ -102,24 +119,34 @@ export default function curveExtrude(polyline: Array<vec2>, positions: Array<vec
         edgeNormals[i] = vec3.cross(normal, tv0, normal);
     }
 
-    // get average normal of connected edges for each vertex in the polyline
-    for (let i = 0; i < sliceVertices; i++) {
-        let j = i - 1;
-        if (j === -1) {
-            j = sliceVertices - 1;
-        }
+    // get average normal of connected edges for each vertex in the polyline if
+    // smooth normals are enabled
+    const smoothNormals = options?.smoothNormals ?? false;
+    let vertexNormals: Array<vec3> | undefined;
 
-        const normal = vec3.add(vec3.create(), edgeNormals[j], edgeNormals[i]);
-        vertexNormals[i] = vec3.normalize(normal, normal);
+    if (smoothNormals) {
+        vertexNormals = new Array(sliceVertices);
+
+        for (let i = 0; i < sliceVertices; i++) {
+            let j = i - 1;
+            if (j === -1) {
+                j = sliceVertices - 1;
+            }
+
+            const normal = vec3.add(vec3.create(), edgeNormals[j], edgeNormals[i]);
+            vertexNormals[i] = vec3.normalize(normal, normal);
+        }
     }
 
     // triangulate base if necessary
     let triangulatedBase: Array<vec2> | undefined, baseTriVerts: number | undefined;
+    const includeBases = options?.includeBases ?? true;
     if (includeBases) {
         triangulatedBase = triangulate2DPolygon(polyline);
         baseTriVerts = triangulatedBase.length;
-        // XXX just like in linear extrusions, the start base is flipped
-        makeBase(octree, triangulatedBase, curMat, baseTriVerts, true);
+        // XXX unlike in linear extrusions, the start base is not flipped
+        // because it get's rotated to the correct orientation by a matrix
+        makeBase(octree, triangulatedBase, curMat, baseTriVerts, false);
     }
 
     // walk along each curve point/segment
@@ -136,13 +163,26 @@ export default function curveExtrude(polyline: Array<vec2>, positions: Array<vec
             const k = (j + 1) % sliceVertices;
 
             // make normals
-            const lastNormalA = vec3.clone(vertexNormals[j]);
+            let lastNormalA, lastNormalB, curNormalA, curNormalB;
+
+            if (vertexNormals) {
+                const jNorm = vertexNormals[j];
+                const kNorm = vertexNormals[k];
+                lastNormalA = vec3.clone(jNorm);
+                lastNormalB = vec3.clone(kNorm);
+                curNormalA = vec3.clone(jNorm);
+                curNormalB = vec3.clone(kNorm);
+            } else {
+                const norm = edgeNormals[j];
+                lastNormalA = vec3.clone(norm);
+                lastNormalB = vec3.clone(norm);
+                curNormalA = vec3.clone(norm);
+                curNormalB = vec3.clone(norm);
+            }
+
             vec3.transformMat3(lastNormalA, lastNormalA, lastMatNormal);
-            const lastNormalB = vec3.clone(vertexNormals[k]);
             vec3.transformMat3(lastNormalB, lastNormalB, lastMatNormal);
-            const curNormalA = vec3.clone(vertexNormals[j]);
             vec3.transformMat3(curNormalA, curNormalA, curMatNormal);
-            const curNormalB = vec3.clone(vertexNormals[k]);
             vec3.transformMat3(curNormalB, curNormalB, curMatNormal);
 
             // make vertices
@@ -152,17 +192,17 @@ export default function curveExtrude(polyline: Array<vec2>, positions: Array<vec
             const curB = new Vertex(vec3.clone(curSlice[k]), curNormalB);
 
             // make polygons
-            const polygonA = new Polygon([lastA.clone(), lastB, curB.clone()]);
+            const polygonA = new Polygon([curB.clone(), lastB, lastA.clone()]);
             polygonA.originalValid = true;
             octree.addPolygon(polygonA);
-            const polygonB = new Polygon([curB, curA, lastA]);
+            const polygonB = new Polygon([lastA, curA, curB]);
             polygonB.originalValid = true;
             octree.addPolygon(polygonB);
         }
 
         // add ending base if necessary
         if (includeBases && i === lastSegment) {
-            makeBase(octree, triangulatedBase as Array<vec2>, curMat, baseTriVerts as number, false);
+            makeBase(octree, triangulatedBase as Array<vec2>, curMat, baseTriVerts as number, true);
         }
     }
 
