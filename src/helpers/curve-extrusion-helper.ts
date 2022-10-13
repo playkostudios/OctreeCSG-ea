@@ -62,12 +62,9 @@ function makeBase(octree: OctreeCSG, triangulatedBase: Array<vec2>, mat: mat4, b
 export interface CurveExtrusionOptions {
     includeBases?: boolean;
     smoothNormals?: boolean;
-    // TODO remove this, maybe?:
-    debugDrawer?: (origin: vec3, direction: vec3, rgba: vec4) => void;
 }
 
 export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, frames: Array<[r: vec3, s: vec3, t: vec3]>, options?: CurveExtrusionOptions) {
-    // TODO optionally flat normals
     // validate curve
     const pointCount = positions.length;
 
@@ -77,17 +74,6 @@ export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, fram
 
     if (pointCount < 2) {
         throw new Error('There must be at least 1 segment (2 points) in the curve');
-    }
-
-    // debug lines
-    const debugDrawer = options?.debugDrawer;
-    if (debugDrawer) {
-        for (let i = 0; i < pointCount; i++) {
-            const [r, s, t] = frames[i];
-            debugDrawer(positions[i], r, [1, 0, 0, 1]);
-            debugDrawer(positions[i], s, [0, 0, 1, 1]);
-            debugDrawer(positions[i], t, [0, 1, 0, 1]);
-        }
     }
 
     // output:
