@@ -8,8 +8,8 @@
   "scripts": {
     "test": "mocha",
     "lint": "eslint . --ext .ts",
-    "clean": "rimraf lib/*",
-    "build": "rimraf lib/*.js && esbuild src/index.ts --sourcemap --bundle --minify --platform=neutral --external:gl-matrix --outfile=lib/OctreeCSG-ea.esm.min.js && esbuild src/worker.ts --sourcemap --bundle --minify --platform=browser --format=iife --outfile=lib/OctreeCSG-ea.worker.min.js",
+    "clean": "rimraf lib/*.js lib/*.map lib/*.ts",
+    "build": "rimraf lib/*.js lib/*.map && esbuild src/index.ts --sourcemap --bundle --minify --platform=neutral --external:gl-matrix --outfile=lib/OctreeCSG-ea.esm.min.js && esbuild src/worker.ts --sourcemap --bundle --minify --platform=browser --format=iife --outfile=lib/OctreeCSG-ea.worker.min.js",
     "gen-types": "npm-dts generate --entry index.ts --output lib/index.d.ts -L debug",
     "prepack": "npm run clean && npm run gen-types && npm run build"
   },
