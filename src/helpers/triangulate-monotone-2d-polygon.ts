@@ -42,23 +42,10 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
         output[index++] = vec2.clone(polyline[2]);
 
         return [output, index];
-    } else if (vertexCount === 4) {
-        // triangulate a square. special case that avoids sliver triangles
-        output[index++] = vec2.clone(polyline[0]);
-        output[index++] = vec2.clone(polyline[1]);
-        output[index++] = vec2.clone(polyline[2]);
-
-        if (vec2.squaredDistance(polyline[0], polyline[2]) <= vec2.squaredDistance(polyline[1], polyline[3])) {
-            output[index++] = vec2.clone(polyline[0]);
-        } else {
-            output[index++] = vec2.clone(polyline[1]);
-        }
-
-        output[index++] = vec2.clone(polyline[2]);
-        output[index++] = vec2.clone(polyline[3]);
-
-        return [output, index];
     }
+
+    // XXX don't do a special case for squares since the square may not be
+    // convex and may result in bad triangles
 
     // general case: using monotone polygon triangulation algorithm from a book:
     // Computational Geometry: Algorithms and Applications (second edition,

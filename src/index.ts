@@ -29,3 +29,5 @@ export { rotationMinimizingCurveExtrude, RMFCurveExtrusionOptions } from './help
 export { default as makeCirclePolyline } from './polylines/circle-polyline';
 export { default as makeCubePolyline } from './polylines/cube-polyline';
 export { default as makeRectanglePolyline } from './polylines/rectangle-polyline';
+export { default as makeRegularPolyline } from './polylines/regular-polyline';
+export { default as makeStarPolyline } from './polylines/star-polyline';

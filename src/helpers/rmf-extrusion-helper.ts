@@ -1,7 +1,7 @@
 import { quat, vec3 } from 'gl-matrix';
 import { curveExtrude, CurveExtrusionOptions } from './curve-extrusion-helper';
 import { tq0, tv0, tv1, tv2 } from '../math/temp';
-import { TAU } from '../math/const-numbers';
+import { HALF_PI, TAU } from '../math/const-numbers';
 
 import type { vec2 } from 'gl-matrix';
 
@@ -71,42 +71,47 @@ export function rotationMinimizingCurveExtrude(polyline: Array<vec2>, positions:
 
             const endTangent = tangents[pointCount - 1];
             const endBinormal = vec3.cross(vec3.create(), endTangent, endNormal);
-            const [actualNormal, actualBinormal, _actualTangent] = frames[pointCount - 1];
+            const actualNormal = frames[pointCount - 1][0];
 
-            const dx = vec3.dot(endBinormal, actualBinormal);
+            const dx = vec3.dot(endBinormal, actualNormal);
             const dy = vec3.dot(endNormal, actualNormal);
-            angleErr = Math.atan2(dy, dx);
-            console.log('angle error', angleErr * 180 / Math.PI);
+
+            if (dx !== 0 && dy !== 0) {
+                angleErr = Math.atan2(dy, dx) - HALF_PI;
+            }
         }
 
         angleErr += TAU * twists;
 
-        // divide the angle evenly along the curve (angular speed). apply the
-        // angular speed to the whole curve
-        // XXX the technique's article uses a curvature value that is calculated
-        // from the second differential of the curve, however, we are estimating
-        // it by getting the length of each segment instead. the more segments
-        // there are, the more accurate the curvature value is
-        let totalLength = 0;
-        let lastPos = positions[0];
-        for (let i = 1; i < pointCount; i++) {
-            const curPos = positions[i];
-            totalLength += vec3.distance(lastPos, curPos);
-            lastPos = curPos;
-        }
+        if (angleErr !== 0) {
+            // divide the angle evenly along the curve (angular speed). apply
+            // the angular speed to the whole curve
+            // XXX the technique's article uses a curvature value that is
+            // calculated from the second differential of the curve, however, we
+            // are estimating it by getting the length of each segment instead.
+            // the more segments there are, the more accurate the curvature
+            // value is
+            let totalLength = 0;
+            let lastPos = positions[0];
+            for (let i = 1; i < pointCount; i++) {
+                const curPos = positions[i];
+                totalLength += vec3.distance(lastPos, curPos);
+                lastPos = curPos;
+            }
 
-        let interpLength = 0;
-        lastPos = positions[0];
-        for (let i = 1; i < pointCount; i++) {
-            const [r, s, _t] = frames[i];
-            const curPos = positions[i];
-            interpLength += vec3.distance(lastPos, curPos);
-            lastPos = curPos;
+            let interpLength = 0;
+            lastPos = positions[0];
+            for (let i = 1; i < pointCount; i++) {
+                const [r, s, _t] = frames[i];
+                const curPos = positions[i];
+                interpLength += vec3.distance(lastPos, curPos);
+                lastPos = curPos;
 
-            const thisAngleErr = angleErr * interpLength / totalLength;
-            quat.setAxisAngle(tq0, tangents[i], thisAngleErr);
-            vec3.transformQuat(r, r, tq0);
-            vec3.transformQuat(s, s, tq0);
+                const thisAngleErr = angleErr * interpLength / totalLength;
+                quat.setAxisAngle(tq0, tangents[i], thisAngleErr);
+                vec3.transformQuat(r, r, tq0);
+                vec3.transformQuat(s, s, tq0);
+            }
         }
     }
 
