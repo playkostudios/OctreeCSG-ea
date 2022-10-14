@@ -1,30 +1,212 @@
-import { prepareTriangleBuffer } from '../math/winding-number';
-
 import type { EncodedOctreeCSG } from './EncodedOctreeCSGObject';
 import type OctreeCSG from '../base/OctreeCSG';
-import type { Polygon } from '../math/Polygon';
+import type Vertex from '../math/Vertex';
+import { MaterialDefinitions, MaterialVertexPropertyDefinitions, MaterialVertexPropertyType } from '../base/MaterialDefinition';
 
-function prepareNormalBuffer(polygons: Array<Polygon>) {
-    const array = new Float32Array(polygons.length * 3 * 3);
-
-    let bufferIndex = 0;
-    for (const polygon of polygons) {
-        array.set(polygon.vertices[0].normal, bufferIndex);
-        bufferIndex += 3;
-        array.set(polygon.vertices[1].normal, bufferIndex);
-        bufferIndex += 3;
-        array.set(polygon.vertices[2].normal, bufferIndex);
-        bufferIndex += 3;
+function encodePointDatum(datum: number[] | Float32Array | number | null, datumType: MaterialVertexPropertyType, view: DataView, idx: number): number {
+    // XXX missing data will be replaced with zeros
+    switch (datumType) {
+        case MaterialVertexPropertyType.Number:
+            view.setFloat32(idx, (datum as number | null) ?? 0);
+            idx += 4;
+            break;
+        case MaterialVertexPropertyType.Vec2:
+        {
+            const datumVec = (datum as number[] | Float32Array | null) ?? [0,0];
+            view.setFloat32(idx, datumVec[0]);
+            idx += 4;
+            view.setFloat32(idx, datumVec[1]);
+            idx += 4;
+            break;
+        }
+        case MaterialVertexPropertyType.Vec3:
+        {
+            const datumVec = (datum as number[] | Float32Array | null) ?? [0,0,0];
+            view.setFloat32(idx, datumVec[0]);
+            idx += 4;
+            view.setFloat32(idx, datumVec[1]);
+            idx += 4;
+            view.setFloat32(idx, datumVec[2]);
+            idx += 4;
+            break;
+        }
+        case MaterialVertexPropertyType.Vec4:
+        {
+            const datumVec = (datum as number[] | Float32Array | null) ?? [0,0,0,0];
+            view.setFloat32(idx, datumVec[0]);
+            idx += 4;
+            view.setFloat32(idx, datumVec[1]);
+            idx += 4;
+            view.setFloat32(idx, datumVec[2]);
+            idx += 4;
+            view.setFloat32(idx, datumVec[3]);
+            idx += 4;
+            break;
+        }
     }
 
-    return array;
+    return idx;
 }
 
-export default function encodeOctree(obj: OctreeCSG, transferables: Array<ArrayBuffer>): EncodedOctreeCSG {
+function encodePoint(point: Vertex, propDefinitions: MaterialVertexPropertyDefinitions | null, view: DataView, idx: number): number {
+    // encode position
+    idx = encodePointDatum(point.pos, MaterialVertexPropertyType.Vec3, view, idx);
+
+    // encode per-material extra vertex data
+    if (propDefinitions) {
+        let idxExtra = 0;
+        for (const propDefinition of propDefinitions) {
+            if (point.extra) {
+                idx = encodePointDatum(point.extra[idxExtra++] ?? null, propDefinition.type, view, idx);
+            } else {
+                idx = encodePointDatum(null, propDefinition.type, view, idx);
+            }
+        }
+    }
+
+    return idx;
+}
+
+export default function encodeOctree(obj: OctreeCSG, materialDefinitions: MaterialDefinitions, transferables: Array<ArrayBuffer>): EncodedOctreeCSG {
+    // XXX: this format is streamable; you don't need the entire encoded data to
+    // start adding polygons, they can be added as they are received, as long as
+    // the messages are received sequentially. this could lead to some
+    // interesting memory optimisations in the future if we ever decide to split
+    // the buffer into smaller ones and essentially stream polygons to the
+    // octree on the worker
+
+    // buffer with all polygon data. polygons are grouped in sections, where one
+    // section contains all polygons for a particular material ID. section
+    // packed format:
+    // ; let N be the polygon count
+    // ; let M be the total extra property bytes per vertex for this material
+    // [bytes] : [value]
+    // 2       : material ID (uint16)
+    // 4       : polygon count (uint32)
+    // N*(48+M): polygon data
+    //
+    // material sections are included one after the other, in continuous memory,
+    // but not in a specific order. for example:
+    // [material 0 section data][material 2 section data][material 1 section data]...
+    //
+    // polygon data packed format:
+    // ; let X be the number of extra vertex properties
+    // [bytes] : [value]
+    // 12      : vertex A position (f32)
+    // ??      : vertex A extra attribute 0 (??)
+    // ??      : vertex A extra attribute 1 (??)
+    // ...
+    // ??      : vertex A extra attribute X-1 (??)
+    // 12      : vertex B position (f32)
+    // ??      : vertex B extra attribute 0 (??)
+    // ??      : vertex B extra attribute 1 (??)
+    // ...
+    // ??      : vertex B extra attribute X-1 (??)
+    // 12      : vertex C position (f32)
+    // ??      : vertex C extra attribute 0 (??)
+    // ??      : vertex C extra attribute 1 (??)
+    // ...
+    // ??      : vertex C extra attribute X-1 (??)
+    //
+    // example polygon data format if the extra vertex properties were:
+    // ; attribute 0: vec3 float32 normals
+    // ; attribute 1: vec4 float32 tangents
+    // ; attribute 2: vec2 float32 uvs
+    // ; attribute 3: vec3 float32 colors
+    // [bytes] : [value]
+    // 12      : vertex A position (f32)
+    // 12      : vertex A normal (extra attribute 0) (f32)
+    // 16      : vertex A tangent (extra attribute 1) (f32)
+    // 8       : vertex A uv (extra attribute 2) (f32)
+    // 12      : vertex A color (extra attribute 3) (f32)
+    // 12      : vertex B position (f32)
+    // 12      : vertex B normal (extra attribute 0) (f32)
+    // 16      : vertex B tangent (extra attribute 1) (f32)
+    // 8       : vertex B uv (extra attribute 2) (f32)
+    // 12      : vertex B color (extra attribute 3) (f32)
+    // 12      : vertex C position (f32)
+    // 12      : vertex C normal (extra attribute 0) (f32)
+    // 16      : vertex C tangent (extra attribute 1) (f32)
+    // 8       : vertex C uv (extra attribute 2) (f32)
+    // 12      : vertex C color (extra attribute 3) (f32)
+
+    // count polygons for each material
     const polygons = obj.getPolygons();
-    const vertexBuffer = prepareTriangleBuffer(polygons);
-    transferables.push(vertexBuffer.buffer);
-    const normalBuffer = prepareNormalBuffer(polygons);
-    transferables.push(normalBuffer.buffer);
-    return [vertexBuffer, normalBuffer];
+    const polygonCounts = new Map<number, number>();
+
+    for (const polygon of polygons) {
+        const materialID = polygon.shared;
+
+        if (materialID < 0 || materialID > 65535) {
+            throw new Error(`Invalid material ID (${materialID}) for polygon. Valid range: 0-65535`);
+        }
+
+        const polygonCount = (polygonCounts.get(materialID) ?? 0) + 1;
+        polygonCounts.set(materialID, polygonCount);
+    }
+
+    // allocate buffer and get section offsets
+    let bytesCount = 0;
+    const sectionOffsets = new Map<number, number>();
+
+    for (const [materialID, polygonCount] of polygonCounts) {
+        sectionOffsets.set(materialID, bytesCount);
+        let extraBytes = 0;
+
+        const materialDefinition = materialDefinitions[materialID];
+        if (materialDefinition) {
+            for (const property of materialDefinition) {
+                switch (property.type) {
+                    case MaterialVertexPropertyType.Number:
+                        extraBytes += 4;
+                        break;
+                    case MaterialVertexPropertyType.Vec2:
+                        extraBytes += 8;
+                        break;
+                    case MaterialVertexPropertyType.Vec3:
+                        extraBytes += 12;
+                        break;
+                    case MaterialVertexPropertyType.Vec4:
+                        extraBytes += 16;
+                        break;
+                }
+            }
+        }
+
+        bytesCount += 6 + polygonCount * (48 + extraBytes);
+    }
+
+    const buffer = new ArrayBuffer(bytesCount);
+    const view = new DataView(buffer);
+
+    // populate sections headers
+    for (const [materialID, polygonCount] of polygonCounts) {
+        let sectionStart = sectionOffsets.get(materialID) as number;
+
+        // material ID uint16
+        view.setUint16(sectionStart, materialID);
+        sectionStart += 2;
+
+        // polygon count uint32
+        view.setUint32(sectionStart, polygonCount);
+        sectionStart += 4;
+
+        sectionOffsets.set(materialID, sectionStart);
+    }
+
+    // encode polygons
+    for (const polygon of polygons) {
+        // get material ID of polygon and current offset for section
+        const materialID = polygon.shared;
+        let offset = sectionOffsets.get(materialID) as number;
+
+        // encode position and extra data
+        const propDefs = materialDefinitions[materialID];
+        offset = encodePoint(polygon.vertices[0], propDefs, view, offset);
+        offset = encodePoint(polygon.vertices[1], propDefs, view, offset);
+        offset = encodePoint(polygon.vertices[2], propDefs, view, offset);
+    }
+
+    transferables.push(buffer);
+    return buffer;
 }

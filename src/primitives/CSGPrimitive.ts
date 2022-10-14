@@ -6,14 +6,19 @@ import type { mat3 } from 'gl-matrix';
 
 import type Vertex from '../math/Vertex';
 import type Box3 from '../math/Box3';
+import type { MaterialDefinitions } from '../base/MaterialDefinition';
 
 export type CSGPrimitiveOptions = {
+    materialDefinitions: MaterialDefinitions,
     matrix: mat4,
     normalMatrix?: mat3,
 } | {
+    materialDefinitions: MaterialDefinitions,
     rotation?: quat,
     translation?: vec3,
     scale?: vec3,
+} | {
+    // eslint-disable-next-line @typescript-eslint/ban-types
 };
 
 export class CSGPrimitive extends OctreeCSG {
@@ -38,9 +43,17 @@ export class CSGPrimitive extends OctreeCSG {
         }
 
         if ('matrix' in options) {
+            if (!options.materialDefinitions) {
+                throw new Error('Material definitions must be provided if transforming a CSG primitive');
+            }
+
             const matrix = options.matrix;
-            this.applyMatrix(matrix, options.normalMatrix);
-        } else if (options.rotation || options.translation || options.scale) {
+            this.applyMatrix(options.materialDefinitions, matrix, options.normalMatrix);
+        } else if ('rotation' in options || 'translation' in options || 'scale' in options) {
+            if (!options.materialDefinitions) {
+                throw new Error('Material definitions must be provided if transforming a CSG primitive');
+            }
+
             // make transformation matrix
             const matrix = mat4.create();
 
@@ -81,7 +94,7 @@ export class CSGPrimitive extends OctreeCSG {
                 mat4.fromScaling(matrix, options.scale as vec3);
             }
 
-            this.applyMatrix(matrix);
+            this.applyMatrix(options.materialDefinitions, matrix);
         }
     }
 }

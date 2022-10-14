@@ -48,9 +48,9 @@ function makeBase(octree: OctreeCSG, triangulatedBase: Array<vec2>, mat: mat4, b
         const normal = Plane.calculateNormal(a, b, c);
 
         // make vertices
-        const aVert = new Vertex(a, vec3.clone(normal));
-        const bVert = new Vertex(b, vec3.clone(normal));
-        const cVert = new Vertex(c, normal);
+        const aVert = new Vertex(a, [vec3.clone(normal)]);
+        const bVert = new Vertex(b, [vec3.clone(normal)]);
+        const cVert = new Vertex(c, [normal]);
 
         // add to octree
         const polygon = new Polygon([aVert, bVert, cVert]);
@@ -172,10 +172,10 @@ export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, fram
             vec3.transformMat3(curNormalB, curNormalB, curMatNormal);
 
             // make vertices
-            const lastA = new Vertex(lastSlice[j], lastNormalA);
-            const lastB = new Vertex(lastSlice[k], lastNormalB);
-            const curA = new Vertex(vec3.clone(curSlice[j]), curNormalA);
-            const curB = new Vertex(vec3.clone(curSlice[k]), curNormalB);
+            const lastA = new Vertex(lastSlice[j], [lastNormalA]);
+            const lastB = new Vertex(lastSlice[k], [lastNormalB]);
+            const curA = new Vertex(vec3.clone(curSlice[j]), [curNormalA]);
+            const curB = new Vertex(vec3.clone(curSlice[k]), [curNormalB]);
 
             // make polygons
             const polygonA = new Polygon([curB.clone(), lastB, lastA.clone()]);

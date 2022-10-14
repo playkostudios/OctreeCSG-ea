@@ -6,8 +6,9 @@ import { JobError } from './JobError';
 import type { EncodedOctreeCSGObject, EncodedOctreeCSGObjectArgument } from './EncodedOctreeCSGObject';
 import type { OctreeCSGObject } from '../base/OctreeCSGObject';
 import type WorkerRequest from './WorkerRequest';
+import type { MaterialDefinitions } from '../base/MaterialDefinition';
 
-function encodeOctreeCSGObject(obj: OctreeCSGObject, transferables: Array<ArrayBuffer>): EncodedOctreeCSGObject {
+function encodeOctreeCSGObject(obj: OctreeCSGObject, materialDefinitions: MaterialDefinitions, transferables: Array<ArrayBuffer>): EncodedOctreeCSGObject {
     switch (obj.op) {
         case 'union':
         case 'subtract':
@@ -15,8 +16,8 @@ function encodeOctreeCSGObject(obj: OctreeCSGObject, transferables: Array<ArrayB
         {
             return <EncodedOctreeCSGObject>{
                 op: obj.op,
-                objA: encodeOctreeCSGObjectOrCSG(obj.objA, transferables),
-                objB: encodeOctreeCSGObjectOrCSG(obj.objB, transferables),
+                objA: encodeOctreeCSGObjectOrCSG(obj.objA, materialDefinitions, transferables),
+                objB: encodeOctreeCSGObjectOrCSG(obj.objB, materialDefinitions, transferables),
             }
         }
         case 'unionArray':
@@ -26,7 +27,7 @@ function encodeOctreeCSGObject(obj: OctreeCSGObject, transferables: Array<ArrayB
             const encodedObjs = new Array<EncodedOctreeCSGObjectArgument>();
 
             for (const octreeObj of obj.objs) {
-                encodedObjs.push(encodeOctreeCSGObjectOrCSG(octreeObj, transferables));
+                encodedObjs.push(encodeOctreeCSGObjectOrCSG(octreeObj, materialDefinitions, transferables));
             }
 
             return <EncodedOctreeCSGObject>{
@@ -39,23 +40,25 @@ function encodeOctreeCSGObject(obj: OctreeCSGObject, transferables: Array<ArrayB
     }
 }
 
-function encodeOctreeCSGObjectOrCSG(obj: OctreeCSGObject | OctreeCSG, transferables: Array<ArrayBuffer>): EncodedOctreeCSGObjectArgument {
+function encodeOctreeCSGObjectOrCSG(obj: OctreeCSGObject | OctreeCSG, materialDefinitions: MaterialDefinitions, transferables: Array<ArrayBuffer>): EncodedOctreeCSGObjectArgument {
     if (obj instanceof OctreeCSG) {
-        return encodeOctree(obj, transferables);
+        return encodeOctree(obj, materialDefinitions, transferables);
     } else {
-        return encodeOctreeCSGObject(obj, transferables);
+        return encodeOctreeCSGObject(obj, materialDefinitions, transferables);
     }
 }
 
 export default class Job {
     private operation: EncodedOctreeCSGObject | null;
+    private materialDefinitions: MaterialDefinitions | null;
     private transferables: Array<ArrayBuffer> | null;
     workerIndex: number | null = null;
 
-    constructor(operation: OctreeCSGObject, private resolveCallback: (octree: OctreeCSG) => void, private rejectCallback: (error: JobError) => void) {
+    constructor(operation: OctreeCSGObject, materialDefinitions: MaterialDefinitions, private resolveCallback: (octree: OctreeCSG) => void, private rejectCallback: (error: JobError) => void) {
         // encode operation
         this.transferables = [];
-        this.operation = encodeOctreeCSGObject(operation, this.transferables);
+        this.operation = encodeOctreeCSGObject(operation, materialDefinitions, this.transferables);
+        this.materialDefinitions = materialDefinitions;
     }
 
     getMessage(workerIndex: number, jobIndex: number): [message: WorkerRequest, transferables: Array<ArrayBuffer>] {
@@ -64,9 +67,11 @@ export default class Job {
         }
 
         const operation = this.operation;
+        const materialDefinitions = this.materialDefinitions;
         const transferables = this.transferables;
 
         this.operation = null;
+        this.materialDefinitions = null;
         this.transferables = null;
         this.workerIndex = workerIndex;
 
@@ -75,6 +80,7 @@ export default class Job {
                 type: 'operation',
                 jobIndex,
                 operation,
+                materialDefinitions,
             },
             transferables,
         ];
@@ -82,9 +88,9 @@ export default class Job {
         return data;
     }
 
-    resolve(vertexBuffer: Float32Array, normalBuffer: Float32Array) {
+    resolve(buffer: ArrayBuffer) {
         try {
-            this.resolveCallback(decodeOctree(vertexBuffer, normalBuffer));
+            this.resolveCallback(decodeOctree(buffer));
         } catch(e) {
             this.rejectCallback(JobError.DecodeFailure(e));
         }

@@ -8,13 +8,13 @@ import type { CSGPrimitiveOptions } from './CSGPrimitive';
 
 function addSquare(vertices: Array<Vertex>, index: number, a: vec3, b: vec3, c: vec3, d: vec3, normal: vec3): number {
     // first triangle
-    vertices[index++] = new Vertex(vec3.clone(a), vec3.clone(normal));
-    vertices[index++] = new Vertex(b, vec3.clone(normal));
-    vertices[index++] = new Vertex(vec3.clone(c), vec3.clone(normal));
+    vertices[index++] = new Vertex(vec3.clone(a), [vec3.clone(normal)]);
+    vertices[index++] = new Vertex(b, [vec3.clone(normal)]);
+    vertices[index++] = new Vertex(vec3.clone(c), [vec3.clone(normal)]);
     // second triangle
-    vertices[index++] = new Vertex(c, vec3.clone(normal));
-    vertices[index++] = new Vertex(d, vec3.clone(normal));
-    vertices[index++] = new Vertex(a, normal);
+    vertices[index++] = new Vertex(c, [vec3.clone(normal)]);
+    vertices[index++] = new Vertex(d, [vec3.clone(normal)]);
+    vertices[index++] = new Vertex(a, [normal]);
 
     return index;
 }

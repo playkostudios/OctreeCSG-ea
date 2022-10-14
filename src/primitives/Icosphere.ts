@@ -10,9 +10,9 @@ import type { CSGPrimitiveOptions } from './CSGPrimitive';
 function addTriangle(depth: number, vertices: Array<Vertex>, index: number, radius: number, a: Readonly<vec3>, b: Readonly<vec3>, c: Readonly<vec3>) {
     if (depth <= 0) {
         // target depth reached, make triangle
-        vertices[index++] = new Vertex(vec3.scale(vec3.create(), a, radius), vec3.clone(a));
-        vertices[index++] = new Vertex(vec3.scale(vec3.create(), b, radius), vec3.clone(b));
-        vertices[index++] = new Vertex(vec3.scale(vec3.create(), c, radius), vec3.clone(c));
+        vertices[index++] = new Vertex(vec3.scale(vec3.create(), a, radius), [vec3.clone(a)]);
+        vertices[index++] = new Vertex(vec3.scale(vec3.create(), b, radius), [vec3.clone(b)]);
+        vertices[index++] = new Vertex(vec3.scale(vec3.create(), c, radius), [vec3.clone(c)]);
     } else {
         // target depth not reached, subdivide triangle into 4 triangles
         const abm = vec3.add(vec3.create(), a, b);

@@ -4,6 +4,7 @@ import Job from './Job';
 import type { OctreeCSGObject } from '../base/OctreeCSGObject';
 import type OctreeCSG from '../base/OctreeCSG';
 import type JobResult from './JobResult';
+import type { MaterialDefinitions } from '../base/MaterialDefinition';
 
 declare global {
     // eslint-disable-next-line no-var
@@ -94,7 +95,7 @@ export default class OctreeCSGJobDispatcher {
 
         // finalize promise
         if (event.data.success) {
-            job.resolve(event.data.vertices, event.data.normals);
+            job.resolve(event.data.buffer);
         } else {
             job.reject(JobError.OperationFailure(event.data.error));
         }
@@ -119,10 +120,10 @@ export default class OctreeCSGJobDispatcher {
         worker.postMessage(...job.getMessage(minWorkerIndex, jobIndex));
     }
 
-    dispatch(operation: OctreeCSGObject) {
+    dispatch(operation: OctreeCSGObject, materialDefinitions: MaterialDefinitions) {
         return new Promise((resolve: (octree: OctreeCSG) => void, reject: (error: JobError) => void) => {
             // create job
-            const job = new Job(operation, resolve, reject)
+            const job = new Job(operation, materialDefinitions, resolve, reject)
             const jobIndex = this.nextJobIndex++;
             this.waitingJobs.set(jobIndex, job);
 

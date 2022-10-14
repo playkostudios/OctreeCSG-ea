@@ -98,7 +98,6 @@ OctreeCSG provides 3 methods to perform CSG operations on an array of meshes / o
 | Parameter | Description |
 | --- | --- |
 | objArr | An array of meshes or octrees to perform the CSG operation on |
-| materialIndexMax | (Optional) Can be used to specify the maximum number of groups in the result Octree. **Default**: Infinity |
 
 List of Methods:
 - OctreeCSG.unionArray - Union operation on an array of meshes

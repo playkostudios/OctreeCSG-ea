@@ -20,6 +20,7 @@ import type { OctreeCSGObject } from './OctreeCSGObject';
 import type { CSGRulesArray } from './CSGRule';
 
 import { mat3, mat4, vec3 } from 'gl-matrix';
+import { MaterialDefinitions } from './MaterialDefinition';
 
 const _v1 = vec3.create();
 const _v2 = vec3.create();
@@ -332,11 +333,11 @@ export default class OctreeCSG {
         return polygons;
     }
 
-    invert() {
+    invert(materialDefinitions: MaterialDefinitions) {
         for(const polygonsArray of this.polygonArrays) {
             for(const polygon of polygonsArray) {
                 if (polygon.valid) {
-                    polygon.flip();
+                    polygon.flip(materialDefinitions);
                 }
             }
         }
@@ -474,7 +475,7 @@ export default class OctreeCSG {
         }
     }
 
-    protected handleIntersectingPolygons(targetOctree: OctreeCSG, targetOctreeBuffer?: Float32Array) {
+    protected handleIntersectingPolygons(targetOctree: OctreeCSG, materialDefinitions: MaterialDefinitions, targetOctreeBuffer?: Float32Array) {
         if (OctreeCSG.useWindingNumber && !targetOctreeBuffer) {
             throw new Error('targetOctreeBuffer must be set if using winding number');
         }
@@ -490,7 +491,7 @@ export default class OctreeCSG {
 
                 const targetPolygons = targetOctree.getPolygonsIntersectingPolygon(currentPolygon);
                 for (const target of targetPolygons) {
-                    const splitResults = splitPolygonByPlane(currentPolygon, target.plane);
+                    const splitResults = splitPolygonByPlane(currentPolygon, target.plane, materialDefinitions);
 
                     if (splitResults.length > 1) {
                         for (const result of splitResults) {
@@ -568,7 +569,7 @@ export default class OctreeCSG {
         }
 
         for (const subTree of this.subTrees) {
-            subTree.handleIntersectingPolygons(targetOctree, targetOctreeBuffer);
+            subTree.handleIntersectingPolygons(targetOctree, materialDefinitions, targetOctreeBuffer);
         }
     }
 
@@ -642,23 +643,42 @@ export default class OctreeCSG {
         }
     }
 
-    applyMatrix(matrix: mat4, normalMatrix?: mat3, firstRun = true) {
+    applyMatrix(materialDefinitions: MaterialDefinitions, matrix: mat4, normalMatrix?: mat3, firstRun = true, needsNormalMatrix = false) {
         if (this.box) {
             this.box = undefined;
         }
 
-        if (!normalMatrix) {
-            normalMatrix = mat3.normalFromMat4(tmpm3, matrix);
+        if (firstRun) {
+            if (!needsNormalMatrix) {
+                for (const materialDefinition of materialDefinitions) {
+                    if (materialDefinition) {
+                        for (const propDefinition of materialDefinition) {
+                            if (propDefinition.transformable) {
+                                needsNormalMatrix = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (needsNormalMatrix) {
+                        break;
+                    }
+                }
+            }
+
+            if (needsNormalMatrix && !normalMatrix) {
+                normalMatrix = mat3.normalFromMat4(tmpm3, matrix);
+            }
         }
 
         for (const polygon of this.polygons) {
             if (polygon.valid) {
-                polygon.applyMatrix(matrix, normalMatrix);
+                polygon.applyMatrix(materialDefinitions, matrix, normalMatrix);
             }
         }
 
         for (const subTree of this.subTrees) {
-            subTree.applyMatrix(matrix, normalMatrix, false);
+            subTree.applyMatrix(materialDefinitions, matrix, normalMatrix, false, needsNormalMatrix);
         }
 
         if (firstRun) {
@@ -705,7 +725,7 @@ export default class OctreeCSG {
         b. inside and coplanar-front
         c. inside
     */
-    static union(octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree = true) {
+    static union(octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree = true) {
         if (!octreeA.box) {
             octreeA.buildTree();
         }
@@ -724,7 +744,7 @@ export default class OctreeCSG {
             octreeA.markIntersectingPolygons(octreeB);
             octreeB.markIntersectingPolygons(octreeA);
 
-            OctreeCSG.handleIntersectingOctrees(octreeA, octreeB);
+            OctreeCSG.handleIntersectingOctrees(octreeA, octreeB, materialDefinitions);
             octreeA.deleteReplacedPolygons();
             octreeB.deleteReplacedPolygons();
 
@@ -758,7 +778,7 @@ export default class OctreeCSG {
         c. inside and coplanar-front
         d. outside
     */
-    static subtract(octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree = true) {
+    static subtract(octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree = true) {
         if (!octreeA.box) {
             octreeA.buildTree();
         }
@@ -777,7 +797,7 @@ export default class OctreeCSG {
             octreeB.markIntersectingPolygons(octreeA);
 
 
-            OctreeCSG.handleIntersectingOctrees(octreeA, octreeB);
+            OctreeCSG.handleIntersectingOctrees(octreeA, octreeB, materialDefinitions);
             octreeA.deleteReplacedPolygons();
             octreeB.deleteReplacedPolygons();
 
@@ -787,7 +807,7 @@ export default class OctreeCSG {
 
             octreeB.deletePolygonsByIntersection(false);
 
-            octreeB.invert();
+            octreeB.invert(materialDefinitions);
 
             octreeA.getPolygonCloneCallback(octree.addPolygon.bind(octree), triangleHasher);
             octreeB.getPolygonCloneCallback(octree.addPolygon.bind(octree), triangleHasher);
@@ -821,7 +841,7 @@ export default class OctreeCSG {
         d. outside and coplanar-back
         e. outside
     */
-    static intersect(octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree = true) {
+    static intersect(octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree = true) {
         if (!octreeA.box) {
             octreeA.buildTree();
         }
@@ -840,7 +860,7 @@ export default class OctreeCSG {
             octreeA.markIntersectingPolygons(octreeB);
             octreeB.markIntersectingPolygons(octreeA);
 
-            OctreeCSG.handleIntersectingOctrees(octreeA, octreeB);
+            OctreeCSG.handleIntersectingOctrees(octreeA, octreeB, materialDefinitions);
             octreeA.deleteReplacedPolygons();
             octreeB.deleteReplacedPolygons();
 
@@ -865,11 +885,11 @@ export default class OctreeCSG {
         return octree;
     }
 
-    static unionArray(objArr: OctreeCSG[], materialIndexMax = Infinity) {
-        return arrayOperation(OctreeCSG.union, objArr, materialIndexMax);
+    static unionArray(objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions) {
+        return arrayOperation(OctreeCSG.union, objArr, materialDefinitions);
     }
 
-    static subtractArray(objArr: OctreeCSG[], materialIndexMax = Infinity) {
+    static subtractArray(objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions) {
         // XXX subtraction is a special case; the leftmost element is subtracted
         // with everything from the right, which means that:
         // subtractArray(0 ... N) = subtract(0, union(1 ... N))
@@ -879,17 +899,17 @@ export default class OctreeCSG {
         } else if (objArrCount === 1) {
             return objArr[0];
         } else if (objArrCount === 2) {
-            return OctreeCSG.subtract(objArr[0], objArr[1]);
+            return OctreeCSG.subtract(objArr[0], objArr[1], materialDefinitions);
         } else {
-            return OctreeCSG.subtract(objArr[0], OctreeCSG.unionArray(objArr.slice(1), materialIndexMax));
+            return OctreeCSG.subtract(objArr[0], OctreeCSG.unionArray(objArr.slice(1), materialDefinitions), materialDefinitions);
         }
     }
 
-    static intersectArray(objArr: OctreeCSG[], materialIndexMax = Infinity) {
-        return arrayOperation(OctreeCSG.intersect, objArr, materialIndexMax);
+    static intersectArray(objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions) {
+        return arrayOperation(OctreeCSG.intersect, objArr, materialDefinitions);
     }
 
-    static operation(obj: OctreeCSGObject, buildTargetOctree = true) {
+    static operation(obj: OctreeCSGObject, materialDefinitions: MaterialDefinitions, buildTargetOctree = true) {
         let resultOctree: OctreeCSG;
 
         switch (obj.op) {
@@ -897,18 +917,18 @@ export default class OctreeCSG {
             case 'subtract':
             case 'intersect':
             {
-                const octreeA = handleObjectForOp(obj.objA, buildTargetOctree);
-                const octreeB = handleObjectForOp(obj.objB, buildTargetOctree);
+                const octreeA = handleObjectForOp(obj.objA, materialDefinitions, buildTargetOctree);
+                const octreeB = handleObjectForOp(obj.objB, materialDefinitions, buildTargetOctree);
 
                 switch (obj.op) {
                     case 'union':
-                        resultOctree = OctreeCSG.union(octreeA, octreeB, buildTargetOctree);
+                        resultOctree = OctreeCSG.union(octreeA, octreeB, materialDefinitions, buildTargetOctree);
                         break;
                     case 'subtract':
-                        resultOctree = OctreeCSG.subtract(octreeA, octreeB, buildTargetOctree);
+                        resultOctree = OctreeCSG.subtract(octreeA, octreeB, materialDefinitions, buildTargetOctree);
                         break;
                     default:
-                        resultOctree = OctreeCSG.intersect(octreeA, octreeB, buildTargetOctree);
+                        resultOctree = OctreeCSG.intersect(octreeA, octreeB, materialDefinitions, buildTargetOctree);
                 }
 
                 disposeOctree(octreeA, octreeB);
@@ -921,19 +941,18 @@ export default class OctreeCSG {
                 const octrees = new Array<OctreeCSG>();
 
                 for (const octreeObj of obj.objs) {
-                    octrees.push(handleObjectForOp(octreeObj, buildTargetOctree));
+                    octrees.push(handleObjectForOp(octreeObj, materialDefinitions, buildTargetOctree));
                 }
 
-                // TODO materialIndexMax?
                 switch (obj.op) {
                     case 'unionArray':
-                        resultOctree = OctreeCSG.unionArray(octrees);
+                        resultOctree = OctreeCSG.unionArray(octrees, materialDefinitions);
                         break;
                     case 'subtractArray':
-                        resultOctree = OctreeCSG.subtractArray(octrees);
+                        resultOctree = OctreeCSG.subtractArray(octrees, materialDefinitions);
                         break;
                     default:
-                        resultOctree = OctreeCSG.intersectArray(octrees);
+                        resultOctree = OctreeCSG.intersectArray(octrees, materialDefinitions);
                 }
 
                 disposeOctree(...octrees);
@@ -949,23 +968,23 @@ export default class OctreeCSG {
     static async = {
         batchSize: 100,
 
-        async union(octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree = true): Promise<OctreeCSG> {
-            return asyncOperation('union', OctreeCSG.union, octreeA, octreeB, buildTargetOctree);
+        union(octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree = true): Promise<OctreeCSG> {
+            return asyncOperation('union', OctreeCSG.union, octreeA, octreeB, materialDefinitions, buildTargetOctree);
         },
 
-        subtract(octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree = true): Promise<OctreeCSG> {
-            return asyncOperation('subtract', OctreeCSG.subtract, octreeA, octreeB, buildTargetOctree);
+        subtract(octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree = true): Promise<OctreeCSG> {
+            return asyncOperation('subtract', OctreeCSG.subtract, octreeA, octreeB, materialDefinitions, buildTargetOctree);
         },
 
-        intersect(octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree = true): Promise<OctreeCSG> {
-            return asyncOperation('intersect', OctreeCSG.intersect, octreeA, octreeB, buildTargetOctree);
+        intersect(octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree = true): Promise<OctreeCSG> {
+            return asyncOperation('intersect', OctreeCSG.intersect, octreeA, octreeB, materialDefinitions, buildTargetOctree);
         },
 
-        unionArray(objArr: OctreeCSG[], materialIndexMax = Infinity): Promise<OctreeCSG> {
-            return asyncArrayOperation(OctreeCSG.async.union, OctreeCSG.async.unionArray, objArr, materialIndexMax);
+        unionArray(objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions): Promise<OctreeCSG> {
+            return asyncArrayOperation(OctreeCSG.async.union, OctreeCSG.async.unionArray, objArr, materialDefinitions);
         },
 
-        async subtractArray(objArr: OctreeCSG[], materialIndexMax = Infinity): Promise<OctreeCSG> {
+        async subtractArray(objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions): Promise<OctreeCSG> {
             // XXX subtraction is a special case; the leftmost element is
             // subtracted with everything from the right, which means that:
             // subtractArray(0 ... N) = subtract(0, union(1 ... N))
@@ -975,17 +994,17 @@ export default class OctreeCSG {
             } else if (objArrCount === 1) {
                 return objArr[0];
             } else if (objArrCount === 2) {
-                return await OctreeCSG.async.subtract(objArr[0], objArr[1]);
+                return await OctreeCSG.async.subtract(objArr[0], objArr[1], materialDefinitions);
             } else {
-                return await OctreeCSG.async.subtract(objArr[0], await OctreeCSG.async.unionArray(objArr.slice(1), materialIndexMax));
+                return await OctreeCSG.async.subtract(objArr[0], await OctreeCSG.async.unionArray(objArr.slice(1), materialDefinitions), materialDefinitions);
             }
         },
 
-        intersectArray(objArr: OctreeCSG[], materialIndexMax = Infinity): Promise<OctreeCSG> {
-            return asyncArrayOperation(OctreeCSG.async.intersect, OctreeCSG.async.intersectArray, objArr, materialIndexMax);
+        intersectArray(objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions): Promise<OctreeCSG> {
+            return asyncArrayOperation(OctreeCSG.async.intersect, OctreeCSG.async.intersectArray, objArr, materialDefinitions);
         },
 
-        operation(obj: OctreeCSGObject, buildTargetOctree = true): Promise<OctreeCSG> {
+        operation(obj: OctreeCSGObject, materialDefinitions: MaterialDefinitions, buildTargetOctree = true): Promise<OctreeCSG> {
             return new Promise((resolve, reject) => {
                 try {
                     switch (obj.op) {
@@ -996,11 +1015,11 @@ export default class OctreeCSG {
                             let octreeA: OctreeCSG, octreeB: OctreeCSG;
                             const promises = [];
                             if (obj.objA) {
-                                promises.push(handleObjectForOp_async(obj.objA, buildTargetOctree, 0));
+                                promises.push(handleObjectForOp_async(obj.objA, materialDefinitions, buildTargetOctree, 0));
                             }
 
                             if (obj.objB) {
-                                promises.push(handleObjectForOp_async(obj.objB, buildTargetOctree, 1));
+                                promises.push(handleObjectForOp_async(obj.objB, materialDefinitions, buildTargetOctree, 1));
                             }
 
                             Promise.allSettled(promises).then(results => {
@@ -1018,13 +1037,13 @@ export default class OctreeCSG {
                                 let resultPromise;
                                 switch (obj.op) {
                                     case 'union':
-                                        resultPromise = OctreeCSG.async.union(octreeA, octreeB, buildTargetOctree);
+                                        resultPromise = OctreeCSG.async.union(octreeA, octreeB, materialDefinitions, buildTargetOctree);
                                         break;
                                     case 'subtract':
-                                        resultPromise = OctreeCSG.async.subtract(octreeA, octreeB, buildTargetOctree);
+                                        resultPromise = OctreeCSG.async.subtract(octreeA, octreeB, materialDefinitions, buildTargetOctree);
                                         break;
                                     default:
-                                        resultPromise = OctreeCSG.async.intersect(octreeA, octreeB, buildTargetOctree);
+                                        resultPromise = OctreeCSG.async.intersect(octreeA, octreeB, materialDefinitions, buildTargetOctree);
                                 }
 
                                 resultPromise.then(resultOctree => {
@@ -1041,20 +1060,19 @@ export default class OctreeCSG {
                             const octrees = new Array<OctreeCSG>();
 
                             for (const octreeObj of obj.objs) {
-                                octrees.push(handleObjectForOp(octreeObj, buildTargetOctree));
+                                octrees.push(handleObjectForOp(octreeObj, materialDefinitions, buildTargetOctree));
                             }
 
-                            // TODO materialIndexMax?
                             let promise;
                             switch (obj.op) {
                                 case 'unionArray':
-                                    promise = OctreeCSG.async.unionArray(octrees);
+                                    promise = OctreeCSG.async.unionArray(octrees, materialDefinitions);
                                     break;
                                 case 'subtractArray':
-                                    promise = OctreeCSG.async.subtractArray(octrees);
+                                    promise = OctreeCSG.async.subtractArray(octrees, materialDefinitions);
                                     break;
                                 default:
-                                    promise = OctreeCSG.async.intersectArray(octrees);
+                                    promise = OctreeCSG.async.intersectArray(octrees, materialDefinitions);
                             }
 
                             disposeOctree(...octrees);
@@ -1073,7 +1091,7 @@ export default class OctreeCSG {
         }
     }
 
-    protected static handleIntersectingOctrees(octreeA: OctreeCSG, octreeB: OctreeCSG, bothOctrees = true, octreeA_buffer?: Float32Array, octreeB_buffer?: Float32Array) {
+    protected static handleIntersectingOctrees(octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, bothOctrees = true, octreeA_buffer?: Float32Array, octreeB_buffer?: Float32Array) {
         if (OctreeCSG.useWindingNumber) {
             if (bothOctrees && !octreeA_buffer) {
                 octreeA_buffer = prepareTriangleBuffer(octreeA.getPolygons());
@@ -1084,10 +1102,10 @@ export default class OctreeCSG {
             }
         }
 
-        octreeA.handleIntersectingPolygons(octreeB, octreeB_buffer);
+        octreeA.handleIntersectingPolygons(octreeB, materialDefinitions, octreeB_buffer);
 
         if (bothOctrees) {
-            octreeB.handleIntersectingPolygons(octreeA, octreeA_buffer);
+            octreeB.handleIntersectingPolygons(octreeA, materialDefinitions, octreeA_buffer);
         }
 
         if (octreeA_buffer !== undefined) {
@@ -1101,23 +1119,23 @@ function raycastIntersectAscSort(a: RayIntersect, b: RayIntersect) {
     return a.distance - b.distance;
 }
 
-function handleObjectForOp(obj: OctreeCSG | OctreeCSGObject, buildTargetOctree: boolean) {
+function handleObjectForOp(obj: OctreeCSG | OctreeCSGObject, materialDefinitions: MaterialDefinitions, buildTargetOctree: boolean) {
     if (obj instanceof OctreeCSG) {
         return obj;
     } else if (obj.op) {
-        return OctreeCSG.operation(obj, buildTargetOctree);
+        return OctreeCSG.operation(obj, materialDefinitions, buildTargetOctree);
     } else {
         throw new Error('Invalid OctreeCSG operation object');
     }
 }
 
-function handleObjectForOp_async(obj: OctreeCSG | OctreeCSGObject, buildTargetOctree: boolean, objIndex: number): Promise<[csg: OctreeCSG, objIndex: number]> {
+function handleObjectForOp_async(obj: OctreeCSG | OctreeCSGObject, materialDefinitions: MaterialDefinitions, buildTargetOctree: boolean, objIndex: number): Promise<[csg: OctreeCSG, objIndex: number]> {
     return new Promise((resolve, reject) => {
         try {
             if (obj instanceof OctreeCSG) {
                 resolve([obj, objIndex]);
             } else if (obj.op) {
-                OctreeCSG.async.operation(obj, buildTargetOctree).then(returnObj => {
+                OctreeCSG.async.operation(obj, materialDefinitions, buildTargetOctree).then(returnObj => {
                     resolve([returnObj, objIndex]);
                 });
             } else {
@@ -1146,15 +1164,8 @@ function handlePolygonArrayIntersections(targetPolygon: Polygon, outputPolygons:
     }
 }
 
-function arrayOperation(callback: (octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree?: boolean) => OctreeCSG, objArr: OctreeCSG[], materialIndexMax: number) {
-    let octreesArray = new Array<OctreeCSG>();
-    const objArrLen = objArr.length;
-
-    for (let i = 0; i < objArrLen; i++) {
-        const tempOctree = objArr[i];
-        tempOctree.setPolygonIndex(i > materialIndexMax ? materialIndexMax : i);
-        octreesArray.push(tempOctree);
-    }
+function arrayOperation(callback: (octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree?: boolean) => OctreeCSG, objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions) {
+    let octreesArray = objArr.slice();
 
     // XXX minimise the octree bounding box after each operation by applying an
     // operation to pairs of octrees instead of applying it to the same octree
@@ -1170,7 +1181,7 @@ function arrayOperation(callback: (octreeA: OctreeCSG, octreeB: OctreeCSG, build
         for (; i + 1 < octreeCount; i += 2) {
             const octreeA = octreesArray[i];
             const octreeB = octreesArray[i + 1];
-            const resultOctree = callback(octreeA, octreeB);
+            const resultOctree = callback(octreeA, octreeB, materialDefinitions);
             disposeOctree(octreeA, octreeB);
             nextOctreeArray.push(resultOctree);
         }
@@ -1191,7 +1202,7 @@ function arrayOperation(callback: (octreeA: OctreeCSG, octreeB: OctreeCSG, build
     return octreesArray[0];
 }
 
-async function asyncOperation(op: 'union' | 'subtract' | 'intersect', syncCallback: (octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree?: boolean) => OctreeCSG, octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree = true): Promise<OctreeCSG> {
+async function asyncOperation(op: 'union' | 'subtract' | 'intersect', syncCallback: (octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree?: boolean) => OctreeCSG, octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree = true): Promise<OctreeCSG> {
     // try using async job dispatcher
     if (globalThis.globalOctreeCSGJobDispatcher) {
         try {
@@ -1199,7 +1210,7 @@ async function asyncOperation(op: 'union' | 'subtract' | 'intersect', syncCallba
                 op,
                 objA: octreeA,
                 objB: octreeB,
-            })
+            }, materialDefinitions);
         } catch(error) {
             let rethrow = true;
             if (error instanceof JobError && error.failReason === JobFailReason.WorkerCreationFailure) {
@@ -1214,12 +1225,12 @@ async function asyncOperation(op: 'union' | 'subtract' | 'intersect', syncCallba
     }
 
     // fall back to synchronous implementation
-    const result = syncCallback(octreeA, octreeB, buildTargetOctree);
+    const result = syncCallback(octreeA, octreeB, materialDefinitions, buildTargetOctree);
     disposeOctree(octreeA, octreeB);
     return result;
 }
 
-function asyncArrayOperation(singleCallback: (octreeA: OctreeCSG, octreeB: OctreeCSG, buildTargetOctree?: boolean) => Promise<OctreeCSG>, arrayCallback: (objArr: OctreeCSG[], materialIndexMax?: number) => Promise<OctreeCSG>, objArr: OctreeCSG[], materialIndexMax: number): Promise<OctreeCSG> {
+function asyncArrayOperation(singleCallback: (octreeA: OctreeCSG, octreeB: OctreeCSG, materialDefinitions: MaterialDefinitions, buildTargetOctree?: boolean) => Promise<OctreeCSG>, arrayCallback: (objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions) => Promise<OctreeCSG>, objArr: OctreeCSG[], materialDefinitions: MaterialDefinitions): Promise<OctreeCSG> {
     return new Promise((resolve, reject) => {
         try {
             const usingBatches = OctreeCSG.async.batchSize > 4 && OctreeCSG.async.batchSize < objArr.length;
@@ -1238,7 +1249,7 @@ function asyncArrayOperation(singleCallback: (octreeA: OctreeCSG, octreeB: Octre
 
                 let batch;
                 while ((batch = batches.shift())) { // XXX assignment is on purpose
-                    promises.push(arrayCallback(batch, 0));
+                    promises.push(arrayCallback(batch, materialDefinitions));
                 }
 
                 mainOctreeUsed = true;
@@ -1247,13 +1258,7 @@ function asyncArrayOperation(singleCallback: (octreeA: OctreeCSG, octreeB: Octre
                 const octreesArray: OctreeCSG[] = [];
                 const objArrLen = objArr.length;
                 for (let i = 0; i < objArrLen; i++) {
-                    const tempOctree = objArr[i];
-
-                    if (materialIndexMax > -1) {
-                        tempOctree.setPolygonIndex(i > materialIndexMax ? materialIndexMax : i);
-                    }
-
-                    octreesArray.push(tempOctree);
+                    octreesArray.push(objArr[i]);
                 }
 
                 mainOctree = octreesArray.shift() as OctreeCSG;
@@ -1266,11 +1271,11 @@ function asyncArrayOperation(singleCallback: (octreeA: OctreeCSG, octreeB: Octre
                         break;
                     }
 
-                    promises.push(singleCallback(octreesArray[i], octreesArray[i + 1]));
+                    promises.push(singleCallback(octreesArray[i], octreesArray[i + 1], materialDefinitions));
                 }
 
                 if (leftOverOctree) {
-                    promises.push(singleCallback(mainOctree, leftOverOctree));
+                    promises.push(singleCallback(mainOctree, leftOverOctree, materialDefinitions));
                     mainOctreeUsed = true;
                 }
             }
@@ -1293,13 +1298,13 @@ function asyncArrayOperation(singleCallback: (octreeA: OctreeCSG, octreeB: Octre
                 } else if (octrees.length === 1) {
                     resolve(octrees[0]);
                 } else if (octrees.length > 3) {
-                    arrayCallback(octrees, usingBatches ? 0 : -1).then(result => {
+                    arrayCallback(octrees, materialDefinitions).then(result => {
                         resolve(result);
                     }).catch(e => reject(e));
                 } else {
-                    singleCallback(octrees[0], octrees[1]).then(result => {
+                    singleCallback(octrees[0], octrees[1], materialDefinitions).then(result => {
                         if (octrees.length === 3) {
-                            singleCallback(result, octrees[2]).then(innerResult => {
+                            singleCallback(result, octrees[2], materialDefinitions).then(innerResult => {
                                 resolve(innerResult);
                             }).catch(e => reject(e));
                         } else {

@@ -1,8 +1,7 @@
 type JobResult = {
     success: true,
     jobIndex: number,
-    vertices: Float32Array,
-    normals: Float32Array,
+    buffer: ArrayBuffer,
 } | {
     success: false,
     jobIndex: number,

@@ -5,6 +5,7 @@ import Plane from './Plane';
 import type Vertex from './Vertex';
 
 import { mat3, mat4, vec3 } from 'gl-matrix';
+import { MaterialDefinitions } from '../base/MaterialDefinition';
 
 let _polygonID = 0;
 
@@ -19,7 +20,7 @@ export enum PolygonState {
 export class Polygon {
     id: number;
     vertices: Vertex[];
-    shared?: number;
+    shared: number;
     plane: Plane;
     triangle: Triangle;
     intersects = false;
@@ -31,7 +32,7 @@ export class Polygon {
     originalValid = false;
     newPolygon = false;
 
-    constructor(vertices: Vertex[], shared?: number) {
+    constructor(vertices: Vertex[], shared = 0) {
         this.id = _polygonID++;
         this.vertices = vertices.map(v => v.clone());
         this.shared = shared;
@@ -43,12 +44,20 @@ export class Polygon {
         return this.triangle.midpoint;
     }
 
-    applyMatrix(matrix: mat4, normalMatrixIn?: mat3) {
-        const normalMatrix = normalMatrixIn || mat3.normalFromMat4(tmpm3, matrix);
+    applyMatrix(materialDefinitions: MaterialDefinitions, matrix: mat4, normalMatrixIn?: mat3) {
+        let normalMatrix: undefined | mat3;
+        const materialDefinition = materialDefinitions[this.shared];
+
+        if (materialDefinition) {
+            normalMatrix = normalMatrixIn || mat3.normalFromMat4(tmpm3, matrix);
+        }
 
         this.vertices.forEach(v => {
             vec3.transformMat4(v.pos, v.pos, matrix);
-            vec3.transformMat3(v.normal, v.normal, normalMatrix);
+
+            if (materialDefinition) {
+                v.applyNormalMatrix(normalMatrix as mat3, materialDefinition);
+            }
         });
 
         this.plane.delete();
@@ -115,8 +124,9 @@ export class Polygon {
         return polygon;
     }
 
-    flip() {
-        this.vertices.reverse().forEach(v => v.flip());
+    flip(materialDefinitions: MaterialDefinitions) {
+        const materialDefinition = materialDefinitions[this.shared];
+        this.vertices.reverse().forEach(v => v.flip(materialDefinition));
         const tmp = this.triangle.a;
         this.triangle.a = this.triangle.c;
         this.triangle.c = tmp;
@@ -133,7 +143,7 @@ export class Polygon {
         }
 
         (this.triangle as unknown) = undefined;
-        this.shared = undefined;
+        this.shared = 0;
         this.setInvalid();
     }
 }

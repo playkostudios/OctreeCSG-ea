@@ -10,9 +10,9 @@ import type { CSGPrimitiveOptions } from './CSGPrimitive';
 
 function addTriangle(vertices: Array<Vertex>, index: number, radius: number, a: Readonly<vec3>, b: Readonly<vec3>, c: Readonly<vec3>) {
     const normal = Plane.calculateNormal(a, b, c);
-    vertices[index++] = new Vertex(vec3.scale(vec3.create(), a, radius), vec3.clone(normal));
-    vertices[index++] = new Vertex(vec3.scale(vec3.create(), b, radius), vec3.clone(normal));
-    vertices[index++] = new Vertex(vec3.scale(vec3.create(), c, radius), normal);
+    vertices[index++] = new Vertex(vec3.scale(vec3.create(), a, radius), [vec3.clone(normal)]);
+    vertices[index++] = new Vertex(vec3.scale(vec3.create(), b, radius), [vec3.clone(normal)]);
+    vertices[index++] = new Vertex(vec3.scale(vec3.create(), c, radius), [normal]);
     return index;
 }
 

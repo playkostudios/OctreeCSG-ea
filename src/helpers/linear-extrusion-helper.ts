@@ -35,17 +35,17 @@ export default function linearExtrude(polyline: Array<vec2>, depth: number, incl
 
         // make polygons
         const polygonA = new Polygon([
-            new Vertex(vec3.clone(fi), vec3.clone(normal)),
-            new Vertex(fj, vec3.clone(normal)),
-            new Vertex(vec3.clone(bj), vec3.clone(normal)),
+            new Vertex(vec3.clone(fi), [vec3.clone(normal)]),
+            new Vertex(fj, [vec3.clone(normal)]),
+            new Vertex(vec3.clone(bj), [vec3.clone(normal)]),
         ]);
         polygonA.originalValid = true;
         octree.addPolygon(polygonA);
 
         const polygonB = new Polygon([
-            new Vertex(bj, vec3.clone(normal)),
-            new Vertex(bi, vec3.clone(normal)),
-            new Vertex(fi, normal),
+            new Vertex(bj, [vec3.clone(normal)]),
+            new Vertex(bi, [vec3.clone(normal)]),
+            new Vertex(fi, [normal]),
         ]);
         polygonB.originalValid = true;
         octree.addPolygon(polygonB);
@@ -73,14 +73,14 @@ export default function linearExtrude(polyline: Array<vec2>, depth: number, incl
             for (let i = 0; i < triVertCount;) {
                 // make vertices
                 const a_2d = triangulated[i++];
-                const a1 = new Vertex(vec3.fromValues(a_2d[0], a_2d[1], 0), vec3.clone(normal1));
-                const a2 = new Vertex(vec3.fromValues(a_2d[0], a_2d[1], depth), vec3.clone(normal2));
+                const a1 = new Vertex(vec3.fromValues(a_2d[0], a_2d[1], 0), [vec3.clone(normal1)]);
+                const a2 = new Vertex(vec3.fromValues(a_2d[0], a_2d[1], depth), [vec3.clone(normal2)]);
                 const b_2d = triangulated[i++];
-                const b1 = new Vertex(vec3.fromValues(b_2d[0], b_2d[1], 0), vec3.clone(normal1));
-                const b2 = new Vertex(vec3.fromValues(b_2d[0], b_2d[1], depth), vec3.clone(normal2));
+                const b1 = new Vertex(vec3.fromValues(b_2d[0], b_2d[1], 0), [vec3.clone(normal1)]);
+                const b2 = new Vertex(vec3.fromValues(b_2d[0], b_2d[1], depth), [vec3.clone(normal2)]);
                 const c_2d = triangulated[i++];
-                const c1 = new Vertex(vec3.fromValues(c_2d[0], c_2d[1], 0), vec3.clone(normal1));
-                const c2 = new Vertex(vec3.fromValues(c_2d[0], c_2d[1], depth), vec3.clone(normal2));
+                const c1 = new Vertex(vec3.fromValues(c_2d[0], c_2d[1], 0), [vec3.clone(normal1)]);
+                const c2 = new Vertex(vec3.fromValues(c_2d[0], c_2d[1], depth), [vec3.clone(normal2)]);
 
                 // make polygons
                 const polygonA = new Polygon([c1, b1, a1]);

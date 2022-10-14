@@ -40,8 +40,8 @@ function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject): OctreeCSGObject {
 }
 
 function decodeOctreeCSGObjectOrCSG(obj: EncodedOctreeCSGObjectArgument): OctreeCSGObject | OctreeCSG {
-    if (Array.isArray(obj)) {
-        return decodeOctree(...obj);
+    if (obj instanceof ArrayBuffer) {
+        return decodeOctree(obj);
     } else {
         return decodeOctreeCSGObject(obj);
     }
@@ -52,19 +52,20 @@ globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
         case 'operation':
         {
             try {
+                const materialDefinitions = message.data.materialDefinitions;
                 const result = OctreeCSG.operation(
                     decodeOctreeCSGObject(message.data.operation),
+                    materialDefinitions,
                     false,
                 );
 
                 const transferables = new Array<ArrayBuffer>();
-                const [vertices, normals] = encodeOctree(result, transferables);
+                const buffer = encodeOctree(result, materialDefinitions, transferables);
 
                 postMessage(<JobResult>{
                     success: true,
                     jobIndex: message.data.jobIndex,
-                    vertices,
-                    normals,
+                    buffer,
                 });
             } catch(error) {
                 postMessage(<JobResult>{
