@@ -20,7 +20,7 @@ import type { OctreeCSGObject } from './OctreeCSGObject';
 import type { CSGRulesArray } from './CSGRule';
 
 import { mat3, mat4, vec3 } from 'gl-matrix';
-import { MaterialDefinitions } from './MaterialDefinition';
+import { MaterialDefinitions, MaterialAttributeTransform } from './MaterialDefinition';
 
 const _v1 = vec3.create();
 const _v2 = vec3.create();
@@ -653,7 +653,7 @@ export default class OctreeCSG {
                 for (const materialDefinition of materialDefinitions) {
                     if (materialDefinition) {
                         for (const propDefinition of materialDefinition) {
-                            if (propDefinition.transformable) {
+                            if (propDefinition.transformable === MaterialAttributeTransform.Normal) {
                                 needsNormalMatrix = true;
                                 break;
                             }
@@ -673,7 +673,7 @@ export default class OctreeCSG {
 
         for (const polygon of this.polygons) {
             if (polygon.valid) {
-                polygon.applyMatrix(materialDefinitions, matrix, normalMatrix);
+                polygon.applyMatrixNoAuto(materialDefinitions[polygon.shared], matrix, normalMatrix);
             }
         }
 

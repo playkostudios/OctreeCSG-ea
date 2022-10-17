@@ -95,7 +95,7 @@ export default class OctreeCSGJobDispatcher {
 
         // finalize promise
         if (event.data.success) {
-            job.resolve(event.data.buffer);
+            job.resolve(event.data.buffer, event.data.materialDefinitions);
         } else {
             job.reject(JobError.OperationFailure(event.data.error));
         }

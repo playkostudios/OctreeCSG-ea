@@ -1,11 +1,11 @@
-import { MaterialVertexPropertyDefinition, MaterialVertexPropertyDefinitions, MaterialVertexPropertyType } from '../base/MaterialDefinition';
+import { MaterialAttribute, MaterialAttributes, MaterialAttributeType, MaterialAttributeTransform } from '../base/MaterialDefinition';
 
-const vertexNormal = <MaterialVertexPropertyDefinition>{
-    type: MaterialVertexPropertyType.Vec3,
-    transformable: true,
+const vertexNormal = <MaterialAttribute>{
+    type: MaterialAttributeType.Vec3,
+    transformable: MaterialAttributeTransform.Normal,
     flippable: true,
 }
 
-const CSGPrimitiveMaterialDefinition: MaterialVertexPropertyDefinitions = [vertexNormal];
+const CSGPrimitiveMaterialDefinition: MaterialAttributes = [vertexNormal];
 
 export default CSGPrimitiveMaterialDefinition;

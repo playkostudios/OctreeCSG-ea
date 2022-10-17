@@ -32,3 +32,4 @@ export { default as makeRectanglePolyline } from './polylines/rectangle-polyline
 export { default as makeRegularPolyline } from './polylines/regular-polyline';
 export { default as makeStarPolyline } from './polylines/star-polyline';
 export { default as CSGPrimitiveMaterialDefinition } from './primitives/CSGPrimitiveMaterialDefinition';
+export * from './base/MaterialDefinition';

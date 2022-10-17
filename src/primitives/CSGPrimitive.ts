@@ -9,6 +9,8 @@ import type Box3 from '../math/Box3';
 import type { MaterialDefinitions } from '../base/MaterialDefinition';
 
 export type CSGPrimitiveOptions = {
+    materialID?: number,
+} & ({
     materialDefinitions: MaterialDefinitions,
     matrix: mat4,
     normalMatrix?: mat3,
@@ -19,7 +21,7 @@ export type CSGPrimitiveOptions = {
     scale?: vec3,
 } | {
     // eslint-disable-next-line @typescript-eslint/ban-types
-};
+});
 
 export class CSGPrimitive extends OctreeCSG {
     constructor(box: Box3, triangleVertices: Array<Vertex>, options?: CSGPrimitiveOptions) {
@@ -32,7 +34,7 @@ export class CSGPrimitive extends OctreeCSG {
 
         // turn vertex array to triangle array
         for (let i = 0; i < vertexCount; i += 3) {
-            const polygon = new Polygon(triangleVertices.slice(i, i + 3));
+            const polygon = new Polygon(triangleVertices.slice(i, i + 3), options?.materialID);
             polygon.originalValid = true;
             this.polygons.push(polygon);
         }

@@ -5,7 +5,7 @@ import Plane from './Plane';
 import type Vertex from './Vertex';
 
 import { mat3, mat4, vec3 } from 'gl-matrix';
-import { MaterialDefinitions } from '../base/MaterialDefinition';
+import { MaterialDefinitions, MaterialAttributes, MaterialAttributeTransform } from '../base/MaterialDefinition';
 
 let _polygonID = 0;
 
@@ -44,25 +44,34 @@ export class Polygon {
         return this.triangle.midpoint;
     }
 
-    applyMatrix(materialDefinitions: MaterialDefinitions, matrix: mat4, normalMatrixIn?: mat3) {
-        let normalMatrix: undefined | mat3;
-        const materialDefinition = materialDefinitions[this.shared];
-
-        if (materialDefinition) {
-            normalMatrix = normalMatrixIn || mat3.normalFromMat4(tmpm3, matrix);
-        }
-
+    applyMatrixNoAuto(materialDefinition: MaterialAttributes | null, matrix: mat4, normalMatrix: mat3 | undefined) {
         this.vertices.forEach(v => {
             vec3.transformMat4(v.pos, v.pos, matrix);
 
-            if (materialDefinition) {
-                v.applyNormalMatrix(normalMatrix as mat3, materialDefinition);
+            if (normalMatrix) {
+                v.applyMatrix(matrix, normalMatrix, materialDefinition);
             }
         });
 
         this.plane.delete();
         this.plane = Plane.fromPoints(this.vertices[0].pos, this.vertices[1].pos, this.vertices[2].pos);
         this.triangle.set(this.vertices[0].pos, this.vertices[1].pos, this.vertices[2].pos);
+    }
+
+    applyMatrix(materialDefinitions: MaterialDefinitions, matrix: mat4, normalMatrixIn?: mat3) {
+        let normalMatrix: undefined | mat3;
+        const materialDefinition = materialDefinitions[this.shared];
+
+        if (materialDefinition) {
+            for (const propDef of materialDefinition) {
+                if (propDef.transformable === MaterialAttributeTransform.Normal) {
+                    normalMatrix = normalMatrixIn || mat3.normalFromMat4(tmpm3, matrix);
+                    break;
+                }
+            }
+        }
+
+        this.applyMatrixNoAuto(materialDefinition, matrix, normalMatrix);
     }
 
     reset(resetOriginal = true) {

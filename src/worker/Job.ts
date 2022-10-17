@@ -88,9 +88,9 @@ export default class Job {
         return data;
     }
 
-    resolve(buffer: ArrayBuffer) {
+    resolve(buffer: ArrayBuffer, materialDefinitions: MaterialDefinitions | null) {
         try {
-            this.resolveCallback(decodeOctree(buffer));
+            this.resolveCallback(decodeOctree(buffer, materialDefinitions));
         } catch(e) {
             this.rejectCallback(JobError.DecodeFailure(e));
         }
