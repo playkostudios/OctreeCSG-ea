@@ -44,12 +44,12 @@ export class Polygon {
         return this.triangle.midpoint;
     }
 
-    applyMatrixNoAuto(materialDefinition: MaterialAttributes | null, matrix: mat4, normalMatrix: mat3 | undefined) {
+    applyMatrixNoAuto(attributes: MaterialAttributes | undefined, matrix: mat4, normalMatrix: mat3 | undefined) {
         this.vertices.forEach(v => {
             vec3.transformMat4(v.pos, v.pos, matrix);
 
             if (normalMatrix) {
-                v.applyMatrix(matrix, normalMatrix, materialDefinition);
+                v.applyMatrix(matrix, normalMatrix, attributes);
             }
         });
 
@@ -60,10 +60,10 @@ export class Polygon {
 
     applyMatrix(materialDefinitions: MaterialDefinitions, matrix: mat4, normalMatrixIn?: mat3) {
         let normalMatrix: undefined | mat3;
-        const materialDefinition = materialDefinitions[this.shared];
+        const attributes = materialDefinitions.get(this.shared);
 
-        if (materialDefinition) {
-            for (const propDef of materialDefinition) {
+        if (attributes) {
+            for (const propDef of attributes) {
                 if (propDef.transformable === MaterialAttributeTransform.Normal) {
                     normalMatrix = normalMatrixIn || mat3.normalFromMat4(tmpm3, matrix);
                     break;
@@ -71,7 +71,7 @@ export class Polygon {
             }
         }
 
-        this.applyMatrixNoAuto(materialDefinition, matrix, normalMatrix);
+        this.applyMatrixNoAuto(attributes, matrix, normalMatrix);
     }
 
     reset(resetOriginal = true) {
@@ -134,8 +134,8 @@ export class Polygon {
     }
 
     flip(materialDefinitions: MaterialDefinitions) {
-        const materialDefinition = materialDefinitions[this.shared];
-        this.vertices.reverse().forEach(v => v.flip(materialDefinition));
+        const attributes = materialDefinitions.get(this.shared);
+        this.vertices.reverse().forEach(v => v.flip(attributes));
         const tmp = this.triangle.a;
         this.triangle.a = this.triangle.c;
         this.triangle.c = tmp;

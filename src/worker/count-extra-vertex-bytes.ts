@@ -6,10 +6,10 @@ export default function countExtraVertexBytes(materialDefinitions: MaterialDefin
     let extraBytes = 0;
 
     if (materialDefinitions) {
-        const materialDefinition = materialDefinitions[materialID];
-        if (materialDefinition) {
-            for (const property of materialDefinition) {
-                extraBytes += getVertexPropertyTypeSize(property.type);
+        const attributes = materialDefinitions.get(materialID);
+        if (attributes) {
+            for (const attribute of attributes) {
+                extraBytes += getVertexPropertyTypeSize(attribute.valueType);
             }
         }
     }

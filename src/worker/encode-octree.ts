@@ -1,4 +1,4 @@
-import { MaterialDefinitions, MaterialAttributes, MaterialAttributeType } from '../base/MaterialDefinition';
+import { MaterialDefinitions, MaterialAttributes, MaterialAttributeValueType } from '../base/MaterialDefinition';
 import countExtraVertexBytes from './count-extra-vertex-bytes';
 
 import type { EncodedOctreeCSG } from './EncodedOctreeCSGObject';
@@ -6,13 +6,13 @@ import type OctreeCSG from '../base/OctreeCSG';
 import type Vertex from '../math/Vertex';
 import getVertexPropertyTypeSize from './get-vertex-property-type-size';
 
-function encodePointDatum(datum: number[] | Float32Array | number, datumType: MaterialAttributeType, view: DataView, idx: number) {
+function encodePointDatum(datum: number[] | Float32Array | number, datumType: MaterialAttributeValueType, view: DataView, idx: number) {
     // XXX missing data will be replaced with zeros
     switch (datumType) {
-        case MaterialAttributeType.Number:
+        case MaterialAttributeValueType.Number:
             view.setFloat32(idx, datum as number);
             break;
-        case MaterialAttributeType.Vec2:
+        case MaterialAttributeValueType.Vec2:
         {
             const datumVec = datum as number[] | Float32Array;
             view.setFloat32(idx, datumVec[0]);
@@ -20,7 +20,7 @@ function encodePointDatum(datum: number[] | Float32Array | number, datumType: Ma
             view.setFloat32(idx, datumVec[1]);
             break;
         }
-        case MaterialAttributeType.Vec3:
+        case MaterialAttributeValueType.Vec3:
         {
             const datumVec = datum as number[] | Float32Array;
             view.setFloat32(idx, datumVec[0]);
@@ -30,7 +30,7 @@ function encodePointDatum(datum: number[] | Float32Array | number, datumType: Ma
             view.setFloat32(idx, datumVec[2]);
             break;
         }
-        case MaterialAttributeType.Vec4:
+        case MaterialAttributeValueType.Vec4:
         {
             const datumVec = datum as number[] | Float32Array;
             view.setFloat32(idx, datumVec[0]);
@@ -45,20 +45,20 @@ function encodePointDatum(datum: number[] | Float32Array | number, datumType: Ma
     }
 }
 
-function encodePoint(point: Vertex, propDefinitions: MaterialAttributes | null, view: DataView, idx: number): number {
+function encodePoint(point: Vertex, attributes: MaterialAttributes | undefined, view: DataView, idx: number): number {
     // encode position
-    encodePointDatum(point.pos, MaterialAttributeType.Vec3, view, idx);
+    encodePointDatum(point.pos, MaterialAttributeValueType.Vec3, view, idx);
     idx += 12;
 
     // encode per-material extra vertex data
-    if (propDefinitions) {
+    if (attributes) {
         let idxExtra = 0;
-        for (const propDefinition of propDefinitions) {
+        for (const attribute of attributes) {
             if (point.extra) {
-                encodePointDatum(point.extra[idxExtra++], propDefinition.type, view, idx);
+                encodePointDatum(point.extra[idxExtra++], attribute.valueType, view, idx);
             }
 
-            idx += getVertexPropertyTypeSize(propDefinition.type);
+            idx += getVertexPropertyTypeSize(attribute.valueType);
         }
     }
 
@@ -178,10 +178,10 @@ export default function encodeOctree(obj: OctreeCSG, materialDefinitions: Materi
         let offset = sectionOffsets.get(materialID) as number;
 
         // encode position and extra data
-        const propDefs = materialDefinitions[materialID];
-        offset = encodePoint(polygon.vertices[0], propDefs, view, offset);
-        offset = encodePoint(polygon.vertices[1], propDefs, view, offset);
-        offset = encodePoint(polygon.vertices[2], propDefs, view, offset);
+        const attributes = materialDefinitions.get(materialID);
+        offset = encodePoint(polygon.vertices[0], attributes, view, offset);
+        offset = encodePoint(polygon.vertices[1], attributes, view, offset);
+        offset = encodePoint(polygon.vertices[2], attributes, view, offset);
         sectionOffsets.set(materialID, offset);
     }
 

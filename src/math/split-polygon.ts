@@ -27,7 +27,7 @@ const BACK = 2;
 const SPANNING = 3;
 
 export function splitPolygonByPlane(polygon: Polygon, plane: Plane, materialDefinitions: MaterialDefinitions, result: ReturnPolygon[] = []) {
-    const materialDefinition = materialDefinitions[polygon.shared];
+    const attributes = materialDefinitions.get(polygon.shared);
 
     const returnPolygon = <ReturnPolygon>{
         polygon: polygon,
@@ -81,7 +81,7 @@ export function splitPolygonByPlane(polygon: Polygon, plane: Plane, materialDefi
                 if ((ti | tj) === SPANNING) {
                     vec3.sub(tv0, vj.pos, vi.pos);
                     const t = (plane.w - vec3.dot(plane.unsafeNormal, vi.pos)) / vec3.dot(plane.unsafeNormal, tv0);
-                    const v = vi.interpolate(vj, t, materialDefinition);
+                    const v = vi.interpolate(vj, t, attributes);
                     f.push(v);
                     b.push(v.clone());
                 }

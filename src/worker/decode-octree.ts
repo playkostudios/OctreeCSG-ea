@@ -1,6 +1,6 @@
 import OctreeCSG from '../base/OctreeCSG';
 import countExtraVertexBytes from './count-extra-vertex-bytes';
-import { MaterialAttributeType } from '../base/MaterialDefinition';
+import { MaterialAttributeValueType } from '../base/MaterialDefinition';
 import { Polygon } from '../math/Polygon';
 import Vertex from '../math/Vertex';
 import getVertexPropertyTypeSize from './get-vertex-property-type-size';
@@ -8,18 +8,18 @@ import { vec2, vec3, vec4 } from 'gl-matrix';
 
 import type { MaterialDefinitions, MaterialAttributes } from '../base/MaterialDefinition';
 
-function decodePointDatum(datumType: MaterialAttributeType, view: DataView, idx: number): number | vec2 | vec3 | vec4 {
+function decodePointDatum(datumType: MaterialAttributeValueType, view: DataView, idx: number): number | vec2 | vec3 | vec4 {
     switch (datumType) {
-        case MaterialAttributeType.Number:
+        case MaterialAttributeValueType.Number:
             return view.getFloat32(idx);
-        case MaterialAttributeType.Vec2:
+        case MaterialAttributeValueType.Vec2:
         {
             const x = view.getFloat32(idx);
             idx += 4;
             const y = view.getFloat32(idx);
             return vec2.fromValues(x, y);
         }
-        case MaterialAttributeType.Vec3:
+        case MaterialAttributeValueType.Vec3:
         {
             const x = view.getFloat32(idx);
             idx += 4;
@@ -28,7 +28,7 @@ function decodePointDatum(datumType: MaterialAttributeType, view: DataView, idx:
             const z = view.getFloat32(idx);
             return vec3.fromValues(x, y, z);
         }
-        case MaterialAttributeType.Vec4:
+        case MaterialAttributeValueType.Vec4:
         {
             const x = view.getFloat32(idx);
             idx += 4;
@@ -42,18 +42,18 @@ function decodePointDatum(datumType: MaterialAttributeType, view: DataView, idx:
     }
 }
 
-function decodePoint(propDefinitions: MaterialAttributes | null, view: DataView, idx: number): Vertex {
+function decodePoint(attributes: MaterialAttributes | undefined, view: DataView, idx: number): Vertex {
     // decode position
-    const pos = decodePointDatum(MaterialAttributeType.Vec3, view, idx) as vec3;
+    const pos = decodePointDatum(MaterialAttributeValueType.Vec3, view, idx) as vec3;
     idx += 12;
 
     // decode per-material extra vertex data
     let extra;
-    if (propDefinitions) {
+    if (attributes) {
         extra = [];
-        for (const propDefinition of propDefinitions) {
-            extra.push(decodePointDatum(propDefinition.type, view, idx));
-            idx += getVertexPropertyTypeSize(propDefinition.type);
+        for (const attribute of attributes) {
+            extra.push(decodePointDatum(attribute.valueType, view, idx));
+            idx += getVertexPropertyTypeSize(attribute.valueType);
         }
     }
 
@@ -97,13 +97,13 @@ export default function decodeOctree(buffer: ArrayBuffer, materialDefinitions: M
         }
 
         // parse polygons (groups of 3 vertices)
-        const propDefinitions = materialDefinitions === null ? null : materialDefinitions[materialID];
+        const attributes = materialDefinitions === null ? undefined : materialDefinitions.get(materialID);
         while (byteOffset < sectionEnd) {
-            const a = decodePoint(propDefinitions, view, byteOffset);
+            const a = decodePoint(attributes, view, byteOffset);
             byteOffset += vertexBytes;
-            const b = decodePoint(propDefinitions, view, byteOffset);
+            const b = decodePoint(attributes, view, byteOffset);
             byteOffset += vertexBytes;
-            const c = decodePoint(propDefinitions, view, byteOffset);
+            const c = decodePoint(attributes, view, byteOffset);
             byteOffset += vertexBytes;
 
             const polygon = new Polygon([a, b, c], materialID);

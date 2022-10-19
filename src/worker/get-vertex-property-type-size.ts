@@ -1,14 +1,14 @@
-import { MaterialAttributeType } from '../base/MaterialDefinition';
+import { MaterialAttributeValueType } from '../base/MaterialDefinition';
 
-export default function getVertexPropertyTypeSize(propertyType: MaterialAttributeType) {
+export default function getVertexPropertyTypeSize(propertyType: MaterialAttributeValueType) {
     switch (propertyType) {
-        case MaterialAttributeType.Number:
+        case MaterialAttributeValueType.Number:
             return 4;
-        case MaterialAttributeType.Vec2:
+        case MaterialAttributeValueType.Vec2:
             return 8;
-        case MaterialAttributeType.Vec3:
+        case MaterialAttributeValueType.Vec3:
             return 12;
-        case MaterialAttributeType.Vec4:
+        case MaterialAttributeValueType.Vec4:
             return 16;
     }
 

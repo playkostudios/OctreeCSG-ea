@@ -10,13 +10,14 @@ import type { MaterialDefinitions } from '../base/MaterialDefinition';
 
 export type CSGPrimitiveOptions = {
     materialID?: number,
+    outputMatrix?: mat4,
 } & ({
     materialDefinitions: MaterialDefinitions,
     matrix: mat4,
     normalMatrix?: mat3,
 } | {
     materialDefinitions: MaterialDefinitions,
-    rotation?: quat,
+    rotation?: quat | vec3,
     translation?: vec3,
     scale?: vec3,
 } | {
@@ -44,6 +45,11 @@ export class CSGPrimitive extends OctreeCSG {
             return;
         }
 
+        // TODO this feels kinda wrong, but i can't think of a better api (as in
+        // easier to use, but still as efficient) for this. maybe improve this
+        // later?
+        const outputMatrix = options.outputMatrix;
+
         if ('matrix' in options) {
             if (!options.materialDefinitions) {
                 throw new Error('Material definitions must be provided if transforming a CSG primitive');
@@ -51,6 +57,10 @@ export class CSGPrimitive extends OctreeCSG {
 
             const matrix = options.matrix;
             this.applyMatrix(options.materialDefinitions, matrix, options.normalMatrix);
+
+            if (outputMatrix) {
+                mat4.copy(outputMatrix, matrix);
+            }
         } else if ('rotation' in options || 'translation' in options || 'scale' in options) {
             if (!options.materialDefinitions) {
                 throw new Error('Material definitions must be provided if transforming a CSG primitive');
@@ -59,13 +69,23 @@ export class CSGPrimitive extends OctreeCSG {
             // make transformation matrix
             const matrix = mat4.create();
 
-            if (options.rotation && options.translation) {
+            let rotation;
+            if (options.rotation) {
+                if (options.rotation.length === 4) {
+                    rotation = options.rotation;
+                } else {
+                    const [xDeg, yDeg, zDeg] = options.rotation;
+                    rotation = quat.fromEuler(quat.create(), xDeg, yDeg, zDeg);
+                }
+            }
+
+            if (rotation && options.translation) {
                 if (options.scale) {
                     // RTS
-                    mat4.fromRotationTranslationScale(matrix, options.rotation, options.translation, options.scale);
+                    mat4.fromRotationTranslationScale(matrix, rotation, options.translation, options.scale);
                 } else {
                     // RT
-                    mat4.fromRotationTranslation(matrix, options.rotation, options.translation);
+                    mat4.fromRotationTranslation(matrix, rotation, options.translation);
                 }
             } else if (options.translation) {
                 if (options.scale) {
@@ -77,17 +97,17 @@ export class CSGPrimitive extends OctreeCSG {
                     // T
                     mat4.fromTranslation(matrix, options.translation);
                 }
-            } else if (options.rotation) {
+            } else if (rotation) {
                 if (options.scale) {
                     // RS
                     mat4.identity(matrix);
                     const tmpMat = mat4.create();
-                    mat4.fromQuat(tmpMat, options.rotation);
+                    mat4.fromQuat(tmpMat, rotation);
                     mat4.multiply(matrix, matrix, tmpMat);
                     mat4.scale(matrix, matrix, options.scale);
                 } else {
                     // R
-                    mat4.fromQuat(matrix, options.rotation);
+                    mat4.fromQuat(matrix, rotation);
                 }
             } else {
                 // S
@@ -97,6 +117,12 @@ export class CSGPrimitive extends OctreeCSG {
             }
 
             this.applyMatrix(options.materialDefinitions, matrix);
+
+            if (outputMatrix) {
+                mat4.copy(outputMatrix, matrix);
+            }
+        } else if (outputMatrix) {
+            mat4.identity(outputMatrix);
         }
     }
 }

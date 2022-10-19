@@ -650,10 +650,10 @@ export default class OctreeCSG {
 
         if (firstRun) {
             if (!needsNormalMatrix) {
-                for (const materialDefinition of materialDefinitions) {
-                    if (materialDefinition) {
-                        for (const propDefinition of materialDefinition) {
-                            if (propDefinition.transformable === MaterialAttributeTransform.Normal) {
+                for (const attributes of materialDefinitions.values()) {
+                    if (attributes) {
+                        for (const attribute of attributes) {
+                            if (attribute.transformable === MaterialAttributeTransform.Normal) {
                                 needsNormalMatrix = true;
                                 break;
                             }
@@ -673,7 +673,7 @@ export default class OctreeCSG {
 
         for (const polygon of this.polygons) {
             if (polygon.valid) {
-                polygon.applyMatrixNoAuto(materialDefinitions[polygon.shared], matrix, normalMatrix);
+                polygon.applyMatrixNoAuto(materialDefinitions.get(polygon.shared), matrix, normalMatrix);
             }
         }
 

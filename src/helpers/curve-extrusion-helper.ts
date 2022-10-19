@@ -1,10 +1,12 @@
-import { mat3, mat4, vec2, vec3, vec4 } from 'gl-matrix';
+import { mat3, mat4, vec2, vec3 } from 'gl-matrix';
 import OctreeCSG from '../base/OctreeCSG';
 import Plane from '../math/Plane';
 import { Polygon } from '../math/Polygon';
 import { tv0 } from '../math/temp';
 import Vertex from '../math/Vertex';
 import triangulate2DPolygon from './triangulate-2d-polygon';
+
+import type { CurveFrames } from './curve-frame';
 
 function makeSlice(output: Array<vec3>, outputMat: mat4, polyline: Array<vec2>, position: vec3, r: vec3, s: vec3, t: vec3) {
     // r (normal) = +y, s (binormal) = +x, t (tangent) = +z
@@ -64,7 +66,7 @@ export interface CurveExtrusionOptions {
     smoothNormals?: boolean;
 }
 
-export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, frames: Array<[r: vec3, s: vec3, t: vec3]>, options?: CurveExtrusionOptions) {
+export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, frames: CurveFrames, options?: CurveExtrusionOptions) {
     // validate curve
     const pointCount = positions.length;
 

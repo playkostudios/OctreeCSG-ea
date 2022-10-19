@@ -48,10 +48,16 @@ function decodeOctreeCSGObjectOrCSG(obj: EncodedOctreeCSGObjectArgument, materia
     }
 }
 
+function logWorker(callback: (message: string) => void, message: unknown) {
+    callback(`[Worker ${self.name}] ${message}`);
+}
+
 globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
     switch(message.data.type) {
         case 'operation':
         {
+            logWorker(console.debug, `Job started`);
+
             try {
                 const materialDefinitions = message.data.materialDefinitions;
                 const result = OctreeCSG.operation(
@@ -70,17 +76,20 @@ globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
                     materialDefinitions,
                 });
             } catch(error) {
-                console.error(error);
+                logWorker(console.error, error);
                 postMessage(<JobResult>{
                     success: false,
                     jobIndex: message.data.jobIndex,
                     error,
                 });
             }
+
+            logWorker(console.debug, `Job finished`);
+
             break;
         }
         default:
-            console.error(`Unknown worker request type: ${message.data.type}`);
+            logWorker(console.error, `Unknown worker request type: ${message.data.type}`);
     }
 }
 

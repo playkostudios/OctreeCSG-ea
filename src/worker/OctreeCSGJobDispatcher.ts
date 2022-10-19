@@ -20,14 +20,14 @@ export default class OctreeCSGJobDispatcher {
     private waitingJobs = new Map<number, Job>();
     private jobCounts = new Array<number>();
 
-    private initWorker(workers: Array<Worker>, workerPath: string, timeoutMS: number) {
+    private initWorker(workers: Array<Worker>, workerPath: string, timeoutMS: number, name: string) {
         return new Promise((resolve: (value: undefined) => void, reject: (reason: Error) => void) => {
             const timeout = setTimeout(() => {
                 worker.terminate();
                 reject(new Error('Timed out'));
             }, timeoutMS);
 
-            const worker = new Worker(workerPath, { type: 'classic' });
+            const worker = new Worker(workerPath, { type: 'classic', name });
             worker.onmessage = (message: MessageEvent<string>) => {
                 clearTimeout(timeout);
 
@@ -51,7 +51,7 @@ export default class OctreeCSGJobDispatcher {
             let workersDone = 0;
 
             for (let i = 0; i < workerCount; i++) {
-                this.initWorker(workers, workerPath, timeoutMS).catch((reason: Error) => {
+                this.initWorker(workers, workerPath, timeoutMS, `octreecsg-ea-${i}`).catch((reason: Error) => {
                     console.error('Failed to create OctreeCSG worker:', reason.message);
                 }).finally(() => {
                     if (++workersDone === workerCount) {
@@ -67,6 +67,9 @@ export default class OctreeCSGJobDispatcher {
                         }
 
                         this.workers = workers;
+                        this.jobCounts = new Array(actualWorkerCount);
+                        this.jobCounts.fill(0);
+
                         resolve(undefined); // XXX undefined so typescript shuts up
                     }
                 });
@@ -114,6 +117,9 @@ export default class OctreeCSGJobDispatcher {
                 minJobCount = jobCount;
             }
         }
+
+        // add job to worker job count
+        this.jobCounts[minWorkerIndex]++;
 
         // dispatch to chosen worker
         const worker = (this.workers as Array<Worker>)[minWorkerIndex];
