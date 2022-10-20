@@ -141,3 +141,4 @@ IIFE, which increases the size of the worker script dramatically.
 - The triangle-triangle intersection logic and algorithm is based on this [code](https://github.com/benardp/contours/blob/master/freestyle/view_map/triangle_triangle_intersection.c)
 - The ray-box intersection logic and algorithm is based on these 3 articles: [part 1](https://tavianator.com/2011/ray_box.html), [part 2](https://tavianator.com/2015/ray_box_nan.html) and [part 3](https://tavianator.com/2022/ray_box_boundary.html)
 - The triangle-box intersection logic and algorithm is based on this [code](https://stackoverflow.com/questions/17458562/efficient-aabb-triangle-intersection-in-c-sharp/17503268#17503268), which in turn is based on this [paper](https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/code/tribox_tam.pdf)
+- The triangulation algorithms are based on the book `Computational Geometry: Algorithms and Applications` (ISBN `978-3-540-77973-5`)
