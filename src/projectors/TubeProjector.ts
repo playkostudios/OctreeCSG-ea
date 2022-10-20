@@ -72,7 +72,7 @@ export class TubeProjector extends DirectionalProjector<boolean> {
         return this.useInnerFaces !== this.invertTexCoords;
     }
 
-    protected override projectUV(position: vec3, wrapsAround: boolean): vec2 {
+    protected override projectUV(position: vec3, uWrapsAround: boolean): vec2 {
         // get v from tube direction
         vec3.sub(tv1, position, this.origin);
         const v = vec3.dot(this.direction, tv1) * this.invLength - 0.5;
@@ -96,13 +96,15 @@ export class TubeProjector extends DirectionalProjector<boolean> {
         // 3. correct u values that wrapped around by checking angle between
         // polygon average point and tube direction. flip u if using the inside
         // of the tube. use the correct wrapping angle
-        if (!wrapsAround && u > 0.5) {
+        if (uWrapsAround && u < 0.25) {
+            u += 1;
+        } else if (!uWrapsAround && u > 0.75) {
             u -= 1;
         }
 
         u *= this.uMul;
 
-        if (!this.invertTexCoords) {
+        if (!this.needsInvertedTexCoords) {
             u = 1 - u;
         }
 
@@ -111,20 +113,14 @@ export class TubeProjector extends DirectionalProjector<boolean> {
 
     protected override projectSingle(polygon: Polygon, newMaterialID: number, attributeMaps: AttributesMap, newUVsIdx: number | null, attributes: MaterialAttributes | null) {
         // check if polygon will wrap around
-        // 1. get average point of polygon
-        vec3.set(tv0, 0, 0, 0);
-        for (const vertex of polygon.vertices) {
-            vec3.add(tv0, tv0, vertex.pos);
-        }
-
-        vec3.scale(tv0, tv0, 1 / polygon.vertices.length);
-
-        // 2. get point along tube direction that is perpendicular to average
-        vec3.sub(tv1, tv0, this.origin);
+        // 1. get point along tube direction that is perpendicular to polygon
+        // midpoint
+        const mid = polygon.midpoint;
+        vec3.sub(tv1, mid, this.origin);
         const tubeDotPos = vec3.dot(tv1, this.direction);
         const tubePerp = vec3.create();
         vec3.scaleAndAdd(tubePerp, this.origin, this.direction, tubeDotPos);
-        vec3.sub(tubePerp, tv0, tubePerp);
+        vec3.sub(tubePerp, mid, tubePerp);
         vec3.normalize(tubePerp, tubePerp);
 
         // 2. get angle between normal and perpendicular around tube direction

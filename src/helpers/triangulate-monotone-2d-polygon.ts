@@ -18,6 +18,14 @@ function addTriangle(output: Array<vec2>, index: number, clockwise: boolean, a: 
     return index;
 }
 
+function isInInterval(index: number, start: number, end: number) {
+    if (start > end) {
+        return index >= start || index < end;
+    } else {
+        return index >= start && index < end;
+    }
+}
+
 export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, output?: Array<vec2>, index = 0, isClockwiseHint?: boolean): [triangles: Array<vec2>, lastIndex: number] {
     const vertexCount = polyline.length;
 
@@ -60,6 +68,11 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
 
     // sort vertices by XY respectively
     const indices = sort2DIndices(polyline);
+    // XXX a vertex is in the "other"/"second" chain when it comes after or is
+    // at the right-most vertex (last in sorted array), and comes before the
+    // left-most vertex (first in sorted array)
+    const secondChainStart = indices[vertexCount - 1];
+    const secondChainEnd = indices[0];
     let stack = [indices[0], indices[1]];
 
     for (let i = 2; i < vertexCount - 1; i++) {
@@ -70,37 +83,34 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
         const topIndex = stack[stackLen - 1];
         const topVertex = polyline[topIndex];
 
-        if ((thisIndex !== (topIndex + 1) % vertexCount) && (topIndex !== (thisIndex + 1) % vertexCount)) {
+        if (isInInterval(thisIndex, secondChainStart, secondChainEnd) !== isInInterval(topIndex, secondChainStart, secondChainEnd)) {
             // opposite chains
             for (let j = 0; j < stackLen - 1; j++) {
                 index = addTriangle(output, index, isClockwiseHint, thisVertex, vec2.clone(polyline[stack[j]]), vec2.clone(polyline[stack[j + 1]]));
             }
 
-            stack = [indices[i - 1], thisIndex];
+            stack = [topIndex, thisIndex];
         } else {
             // same chain
             let lastPoppedVertex = topVertex;
             let lastPoppedIndex = stack.pop() as number;
+            const lastDelta = vec2.sub(tv1_2, lastPoppedVertex, thisVertex);
+
+            // swap if delta is going in opposite direction
+            if (thisIndex === (lastPoppedIndex + 1) % vertexCount !== isClockwiseHint) {
+                vec2.negate(lastDelta, lastDelta);
+            }
+
             while (stack.length > 0) {
                 const nextPoppedIndex = stack[stack.length - 1];
                 const nextPoppedVertex = polyline[nextPoppedIndex];
 
                 // check if diagonal from current vertex to popped vertex is
                 // inside polygon. if not, stop popping
-                // 1. get direction from vertex before popped, to popped
-                const beforePoppedIndex = (((nextPoppedIndex - 1) % vertexCount) + vertexCount) % vertexCount;
-                const beforePoppedVertex = polyline[beforePoppedIndex];
-                const dir = vec2.sub(tv0_2, nextPoppedVertex, beforePoppedVertex);
+                const delta = vec2.sub(tv0_2, nextPoppedVertex, lastPoppedVertex);
+                const cross = lastDelta[0] * delta[1] - lastDelta[1] * delta[0];
 
-                // 2. get left of direction (inside direction, since CCW's
-                // inside is to the left)
-                const insideDir = vec2.fromValues(-dir[1], dir[0]);
-
-                // 3. get direction from verted before popped to current vertex
-                const curDir = vec2.sub(tv1_2, thisVertex, beforePoppedVertex);
-
-                // 4. check if to the left of direction (inside). if not, break
-                if (vec2.dot(curDir, insideDir) <= 0) {
+                if (cross <= 0) {
                     break;
                 }
 
@@ -110,10 +120,7 @@ export default function triangulateMonotone2DPolygon(polyline: Array<vec2>, outp
                 lastPoppedVertex = nextPoppedVertex;
             }
 
-            if (lastPoppedIndex !== undefined) {
-                stack.push(lastPoppedIndex);
-            }
-
+            stack.push(lastPoppedIndex);
             stack.push(thisIndex);
         }
     }

@@ -24,20 +24,37 @@ function projectPointToLine(out: vec3, point: Readonly<vec3>, lineStart: Readonl
 
 type CurveTubeExtraData = [nearestPolygonSegmentIdx: number, uWrapsAround: boolean];
 
+export interface CurveTubeProjectorOptions extends TubeProjectorOptions {
+    /**
+     * The segment index radius when re-checking the nearest segment to a point.
+     * If too large, then the projection will run very slowly and will have
+     * artifacts when the radii of the curve intersect. If 0, then there will be
+     * no artifacts because of curve radii, but the projection will be incorrect
+     * as the polygon midpoint will be used for the segment UV, instead of a
+     * vertex position. The sweet spot is a small value around 2-3. Defaults to
+     * 2.
+     */
+    checkRadius?: number;
+}
+
 export class CurveTubeProjector extends DirectionalProjector<CurveTubeExtraData> {
     protected length: number;
     protected wrapAngle: number;
     useInnerFaces: boolean;
     invertTexCoords: boolean;
     protected segmentLengthSums: Array<number>;
+    protected uMul: number;
+    checkRadius: number;
 
-    constructor(protected positions: Readonly<Array<vec3>>, protected curveFrames: Readonly<CurveFrames>, options?: TubeProjectorOptions) {
+    constructor(protected positions: Readonly<Array<vec3>>, protected curveFrames: Readonly<CurveFrames>, options?: CurveTubeProjectorOptions) {
         super(options);
 
         this.length = options?.length ?? 1;
         this.wrapAngle = options?.wrapAngle ?? TAU;
+        this.uMul = TAU / this.wrapAngle;
         this.useInnerFaces = options?.useInnerFaces ?? false;
         this.invertTexCoords = options?.invertTexCoords ?? false;
+        this.checkRadius = options?.checkRadius ?? 2;
 
         // pre-calculate segment length sums
         const pointCount = positions.length;
@@ -77,12 +94,11 @@ export class CurveTubeProjector extends DirectionalProjector<CurveTubeExtraData>
 
         // get nearest segment to vertex
         const segmentCount = this.positions.length - 1;
-        const checkRadius = 3;
-        const minSegIdx = Math.max(nearestPolygonSegmentIdx - checkRadius, 0);
-        const maxSegIdx = Math.min(nearestPolygonSegmentIdx + checkRadius, segmentCount);
+        const minSegIdx = Math.max(nearestPolygonSegmentIdx - this.checkRadius, 0);
+        const maxSegIdx = Math.min(nearestPolygonSegmentIdx + this.checkRadius, segmentCount);
 
         let nearestSegmentIdx = Math.max(maxSegIdx - 1, minSegIdx);
-        const nearestPoint = vec3.clone(this.positions[nearestSegmentIdx]);
+        const nearestPoint = vec3.clone(this.positions[nearestSegmentIdx + 1]);
         let nearestDist = vec3.squaredDistance(nearestPoint, position);
         let nearestT = 1;
 
@@ -118,11 +134,20 @@ export class CurveTubeProjector extends DirectionalProjector<CurveTubeExtraData>
         const curLength = thisSum + thisLength * nearestT;
         const v = curLength / this.length;
 
-        // get U by getting normal and binormal component
+        // get U by getting normal and binormal component. flip it if projection
+        // direction is outside to inside
         let u = this.getUNorm(position, nearestPoint, nearestT, nearestSegmentIdx) / TAU + 0.5;
 
-        if (!uWrapsAround && u > 0.5) {
+        if (uWrapsAround && u < 0.25) {
+            u += 1;
+        } else if (!uWrapsAround && u > 0.75) {
             u -= 1;
+        }
+
+        u *= this.uMul;
+
+        if (!this.needsInvertedTexCoords) {
+            u = 1 - u;
         }
 
         return vec2.fromValues(u, v);
@@ -175,11 +200,24 @@ export class CurveTubeProjector extends DirectionalProjector<CurveTubeExtraData>
             }
         }
 
+        // make sure that projection is going in the right direction if not
+        // bi-directional
+        if (this.ignoreBackFaces) {
+            const tubePerp = vec3.sub(tv1, mid, nearestPoint);
+
+            if (this.useInnerFaces) {
+                vec3.negate(tubePerp, tubePerp);
+            }
+
+            if (vec3.dot(tubePerp, polygon.plane.unsafeNormal) <= 0) {
+                return;
+            }
+        }
+
         // check if polygon vertices' U values can wrap around
         const uMid = this.getUNorm(mid, nearestPoint, nearestT, nearestSegmentIdx);
         const uWrapsAround = uMid >= 0;
 
-        // TODO check if polygon matches wanted orientation
         super.projectSingleWithExtraData(polygon, newMaterialID, attributeMaps, newUVsIdx, attributes, [nearestSegmentIdx, uWrapsAround]);
     }
 
