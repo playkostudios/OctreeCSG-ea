@@ -2,10 +2,8 @@ import { polyInside_WindingNumber_buffer, _wP_EPS_ARR, prepareTriangleBuffer } f
 import { checkTrianglesIntersection } from '../math/three-triangle-intersection';
 import { ReturnPolygonType, splitPolygonByPlane } from '../math/split-polygon';
 import rayIntersectsTriangle from '../math/ray-intersects-triangle';
-import pointRounding from '../math/pointRounding';
-import { EPSILON } from '../math/const-numbers';
 import { PolygonState } from '../math/Polygon';
-import { tmpm3 } from '../math/temp';
+import { tmpm3, tv0 } from '../math/temp';
 import Box3 from '../math/Box3';
 import Ray from '../math/Ray';
 
@@ -132,7 +130,17 @@ export default class OctreeCSG {
         return this;
     }
 
+    private getSubtreeIdx(treeMid: Readonly<vec3>, point: Readonly<vec3>): number {
+        return ((point[0] >= treeMid[0]) ? 0b100 : 0) |
+               ((point[1] >= treeMid[1]) ? 0b010 : 0) |
+               ((point[2] >= treeMid[2]) ? 0b001 : 0);
+    }
+
     protected split(level: number) {
+        if (this.polygons.length <= OctreeCSG.polygonsPerTree || level >= OctreeCSG.maxLevel) {
+            return;
+        }
+
         if (!this.box) {
             throw new Error('Octree has no box');
         }
@@ -140,6 +148,9 @@ export default class OctreeCSG {
         const subTrees = [];
         vec3.sub(_v2, this.box.max, this.box.min);
         const halfsize = vec3.scale(_v2, _v2, 0.5);
+
+        // subTrees array content:
+        // -x-y-z; -x-y+z; -x+y-z; -x+y+z; +x-y-z; +x-y+z; +x+y-z; +x+y+z
         for (let x = 0; x < 2; x++) {
             for (let y = 0; y < 2; y++) {
                 for (let z = 0; z < 2; z++) {
@@ -149,43 +160,38 @@ export default class OctreeCSG {
                     vec3.multiply(_v3, v, halfsize);
                     vec3.add(box.min, this.box.min, _v3);
                     vec3.add(box.max, box.min, halfsize);
-                    box.expandByScalar(EPSILON);
                     subTrees.push(new OctreeCSG(box, this));
                 }
             }
         }
 
-        let polygon;
-        while ((polygon = this.polygons.pop())) { // XXX assignment is on purpose
-            let found = false;
-            for (let i = 0; i < subTrees.length; i++) {
-                const subTree = subTrees[i];
-                const subBox = subTree.box;
+        const treeMid = vec3.add(_v2, this.box.max, this.box.min);
+        vec3.scale(treeMid, treeMid, 0.5);
 
-                if (!subBox) {
-                    throw new Error('Subtree has no box');
-                }
+        const kept = [];
+        for (const polygon of this.polygons) {
+            const origIdx = this.getSubtreeIdx(treeMid, polygon.midpoint);
+            const candidSubTree = subTrees[origIdx];
+            const candidBox = candidSubTree.box as Box3;
+            const [a, b, c] = polygon.vertices;
 
-                if (subBox.containsPoint(polygon.midpoint)) {
-                    subTree.polygons.push(polygon);
-                    found = true;
-                }
-            }
-
-            if (!found) {
-                console.error('ERROR: unable to find subtree for:', polygon.triangle);
-                throw new Error(`Unable to find subtree for triangle at level ${level}`);
+            if (candidBox.containsPoint(a.pos) && candidBox.containsPoint(b.pos) && candidBox.containsPoint(c.pos)) {
+                candidSubTree.polygons.push(polygon);
+            } else {
+                // XXX at some point it was decided to split polygons that were
+                // in the boundaries of octrees in the hope that it would be
+                // faster than having polygons in stem nodes of the octree, but
+                // it's actually slower, so it was removed
+                kept.push(polygon);
             }
         }
 
+        this.polygons.splice(0, this.polygons.length, ...kept);
+
         for (const subTree of subTrees) {
-            subTree.level = level + 1;
-            const len = subTree.polygons.length;
-
-            if (len > OctreeCSG.polygonsPerTree && level < OctreeCSG.maxLevel) {
-                subTree.split(level + 1);
-
-            }
+            const nextLevel = level + 1;
+            subTree.level = nextLevel;
+            subTree.split(nextLevel);
             this.subTrees.push(subTree);
         }
 
@@ -289,24 +295,87 @@ export default class OctreeCSG {
     rayIntersect(ray: Ray, intersects: RayIntersect[] = []) {
         if (vec3.squaredLength(ray.direction) === 0) return [];
 
-        let distance = 1e100;
-
         for (const polygon of this.getRayPolygons(ray)) {
             // MollerTrumbore
             const result = rayIntersectsTriangle(ray, polygon.triangle, _v1);
             if (result) {
-                const newdistance = vec3.distance(result, ray.origin);
-                if (distance > newdistance) {
-                    distance = newdistance;
-                }
-                if (distance < 1e100) {
-                    intersects.push({ distance, polygon, position: vec3.add(vec3.create(), result, ray.origin) });
-                }
+                const distance = vec3.distance(result, ray.origin);
+                intersects.push({ distance, polygon, position: vec3.add(vec3.create(), result, ray.origin) });
             }
         }
 
         intersects.length && intersects.sort(raycastIntersectAscSort);
         return intersects;
+    }
+
+    private handlePolyIntersection(ray: Ray, polygon: Polygon, curInt: RayIntersect | null): RayIntersect | null {
+        const result = rayIntersectsTriangle(ray, polygon.triangle, _v1);
+        if (result) {
+            const distance = vec3.distance(result, ray.origin);
+
+            if (!curInt || distance < curInt.distance) {
+                curInt = { distance, polygon, position: vec3.add(vec3.create(), result, ray.origin) };
+            }
+        }
+
+        return curInt;
+    }
+
+    private marchingClosestRayIntersection(ray: Ray): RayIntersect | null {
+        // get closest intersection in current level
+        let thisIntersection: RayIntersect | null = null;
+
+        for (const polygon of this.replacedPolygons) {
+            thisIntersection = this.handlePolyIntersection(ray, polygon, thisIntersection);
+        }
+
+        for (const polygon of this.polygons) {
+            if (polygon.valid && polygon.originalValid) {
+                thisIntersection = this.handlePolyIntersection(ray, polygon, thisIntersection);
+            }
+        }
+
+        // march lower levels
+        if (this.subTrees.length > 0) {
+            // this isn't a leaf node. get lower-level intersections
+            const intSubTrees = new Array<[octree: OctreeCSG, distance: number]>();
+            let intCount = 0;
+
+            for (const subTree of this.subTrees) {
+                // check if subtree intersects ray and get distance
+                let distance = null;
+                if ((subTree.box as Box3).rayIntersection(ray, tv0)) {
+                    distance = vec3.squaredDistance(ray.origin, tv0);
+
+                    // do insertion sort for subtree
+                    let i = 0;
+                    for (; i < intCount && distance >= intSubTrees[i][1]; i++);
+
+                    intSubTrees.splice(i, 0, [subTree, distance]);
+                    intCount++;
+                }
+            }
+
+            // do ray-marching on intersecting subtrees
+            for (const [subTree, _distance] of intSubTrees) {
+                const intersection = subTree.marchingClosestRayIntersection(ray);
+                if (intersection) {
+                    if (!thisIntersection || thisIntersection.distance > intersection.distance) {
+                        thisIntersection = intersection;
+                    }
+                }
+            }
+        }
+
+        return thisIntersection;
+    }
+
+    closestRayIntersection(ray: Ray): RayIntersect | null {
+        if (this.parent === null) {
+            return this.marchingClosestRayIntersection(ray);
+        } else {
+            return this.parent.closestRayIntersection(ray);
+        }
     }
 
     getIntersectingPolygons(polygons: Polygon[] = []) {
@@ -539,14 +608,14 @@ export default class OctreeCSG {
                     if (OctreeCSG.useWindingNumber) {
                         inside = polyInside_WindingNumber_buffer(targetOctreeBuffer as Float32Array, currentPolygon.midpoint, currentPolygon.coplanar);
                     } else {
-                        const point = pointRounding(vec3.copy(_v2, currentPolygon.midpoint));
+                        const point = vec3.copy(_v2, currentPolygon.midpoint);
 
                         vec3.copy(_ray.origin, point);
                         vec3.copy(_rayDirection, currentPolygon.plane.unsafeNormal);
                         vec3.copy(_ray.direction, currentPolygon.plane.unsafeNormal);
 
-                        let intersects = targetOctree.rayIntersect(_ray);
-                        if (intersects.length > 0 && vec3.dot(_rayDirection, intersects[0].polygon.plane.unsafeNormal) > 0) {
+                        let closestInt = targetOctree.closestRayIntersection(_ray);
+                        if (closestInt && vec3.dot(_rayDirection, closestInt.polygon.plane.unsafeNormal) > 0) {
                             inside = true;
                         } else if (currentPolygon.coplanar) {
                             for (const _wP_EPS of _wP_EPS_ARR) {
@@ -554,8 +623,8 @@ export default class OctreeCSG {
                                 vec3.copy(_rayDirection, currentPolygon.plane.unsafeNormal);
                                 vec3.copy(_ray.direction, currentPolygon.plane.unsafeNormal);
 
-                                intersects = targetOctree.rayIntersect(_ray);
-                                if (intersects.length > 0 && vec3.dot(_rayDirection, intersects[0].polygon.plane.unsafeNormal) > 0) {
+                                closestInt = targetOctree.closestRayIntersection(_ray);
+                                if (closestInt && vec3.dot(_rayDirection, closestInt.polygon.plane.unsafeNormal) > 0) {
                                     inside = true;
                                     break;
                                 }

@@ -399,8 +399,7 @@ function getLines(triangle: Triangle) {
 }
 
 function checkTrianglesIntersection(triangle1: Triangle, triangle2: Triangle, additions: Additions = { coplanar: false, source: vec3.create(), target: vec3.create() }) {
-    const triangleIntersects = triangleIntersectsTriangle(triangle1, triangle2, additions);
-    if (!triangleIntersects && additions.coplanar) {
+    if (additions.coplanar) {
         const triangle1Lines = getLines(triangle1);
         const triangle2Lines = getLines(triangle2);
 
@@ -411,11 +410,9 @@ function checkTrianglesIntersection(triangle1: Triangle, triangle2: Triangle, ad
                 }
             }
         }
-
-        return false;
     }
 
-    return triangleIntersects;
+    return triangleIntersectsTriangle(triangle1, triangle2, additions);
 }
 
 export { triangleIntersectsTriangle, checkTrianglesIntersection, getLines, lineIntersects };

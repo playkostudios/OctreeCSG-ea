@@ -29,6 +29,15 @@ const _ba = vec3.create();
 const _cb = vec3.create();
 const _ac = vec3.create();
 
+// canonical SSE min/max
+function canonMin(x: number, y: number) {
+    return x < y ? x : y;
+}
+
+function canonMax(x: number, y: number) {
+    return x > y ? x : y;
+}
+
 export default class Box3 {
     constructor(public min = vec3.create(), public max = vec3.create()) {}
 
@@ -139,6 +148,7 @@ export default class Box3 {
         // AABB and line intersection algorithm from:
         // https://tavianator.com/2022/ray_box_boundary.html
         // adapted to handle directional rays instead of bi-directional lines
+        // TODO test whether branchless programming is improving performance
 
         // dir_inv
         vec3.inverse(_tv3, ray.direction);
@@ -151,13 +161,44 @@ export default class Box3 {
         vec3.sub(_tv2, this.max, ray.origin);
         vec3.mul(_tv2, _tv2, _tv3);
 
-        const tmax = Math.max(_tv1[0], _tv2[0], _tv1[1], _tv2[1], _tv1[2], _tv2[2]);
-        if (tmax < 0) {
+        let tmax = Math.max(canonMin(_tv1[0], Infinity), canonMin(_tv2[0], Infinity));
+        tmax = Math.max(canonMin(_tv1[1], tmax), canonMin(_tv2[1], tmax));
+        tmax = Math.max(canonMin(_tv1[2], tmax), canonMin(_tv2[2], tmax));
+        let tmin = Math.min(canonMax(_tv1[0], 0), canonMax(_tv2[0], 0));
+        tmin = Math.min(canonMax(_tv1[1], tmin), canonMax(_tv2[1], tmin));
+        tmin = Math.min(canonMax(_tv1[2], tmin), canonMax(_tv2[2], tmin));
+
+        return tmin < tmax;
+    }
+
+    rayIntersection(ray: Ray, output: vec3): boolean {
+        // XXX similar to intersectsRay, but sets an output vector with the
+        // intersection point
+        // dir_inv
+        vec3.inverse(_tv3, ray.direction);
+
+        // t1
+        vec3.sub(_tv1, this.min, ray.origin);
+        vec3.mul(_tv1, _tv1, _tv3);
+
+        // t2
+        vec3.sub(_tv2, this.max, ray.origin);
+        vec3.mul(_tv2, _tv2, _tv3);
+
+        let tmax = Math.max(canonMin(_tv1[0], Infinity), canonMin(_tv2[0], Infinity));
+        tmax = Math.max(canonMin(_tv1[1], tmax), canonMin(_tv2[1], tmax));
+        tmax = Math.max(canonMin(_tv1[2], tmax), canonMin(_tv2[2], tmax));
+        let tmin = Math.min(canonMax(_tv1[0], 0), canonMax(_tv2[0], 0));
+        tmin = Math.min(canonMax(_tv1[1], tmin), canonMax(_tv2[1], tmin));
+        tmin = Math.min(canonMax(_tv1[2], tmin), canonMax(_tv2[2], tmin));
+
+        if (tmin >= tmax) {
             return false;
         }
 
-        const tmin = Math.min(_tv1[0], _tv2[0], _tv1[1], _tv2[1], _tv1[2], _tv2[2]);
-        return tmin <= tmax;
+        vec3.scaleAndAdd(output, ray.origin, ray.direction, tmin < 0 ? tmax : tmin);
+
+        return true;
     }
 
     containsPoint(point: Readonly<vec3>): boolean {
