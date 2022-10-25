@@ -56,7 +56,6 @@ Merges two Octrees (octreeA and octreeB) to one Octree
 | --- | --- |
 | octreeA | First octree object |
 | octreeB | Second octree object |
-| buildTargetOctree | (Optional) Specifies if to build the target Octree tree or return a flat Octree (true / flase). **Default**: true |
 
 ### OctreeCSG.subtract:
 Subtracts octreeB from octreeA and returns the result Octree
@@ -65,7 +64,6 @@ Subtracts octreeB from octreeA and returns the result Octree
 | --- | --- |
 | octreeA | First octree object |
 | octreeB | Second octree object |
-| buildTargetOctree | (Optional) Specifies if to build the target Octree tree or return a flat Octree (true / flase). **Default**: true |
 
 ### OctreeCSG.intersect:
 Returns the intersection of octreeA and octreeB
@@ -74,7 +72,6 @@ Returns the intersection of octreeA and octreeB
 | --- | --- |
 | octreeA | First octree object |
 | octreeB | Second octree object |
-| buildTargetOctree | (Optional) Specifies if to build the target Octree tree or return a flat Octree (true / flase). **Default**: true |
 
 ### OctreeCSG.operation
 CSG Hierarchy of Operations (syntax may change), provides a simple method to combine several CSG operations into one
