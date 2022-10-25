@@ -1,5 +1,3 @@
-import encodeOctree from './worker/encode-octree';
-import decodeOctree from './worker/decode-octree';
 import OctreeCSG from './base/OctreeCSG';
 
 import type { EncodedOctreeCSGObject, EncodedOctreeCSGObjectArgument } from './worker/EncodedOctreeCSGObject';
@@ -42,7 +40,7 @@ function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject, materialDefinitions:
 
 function decodeOctreeCSGObjectOrCSG(obj: EncodedOctreeCSGObjectArgument, materialDefinitions: MaterialDefinitions): OctreeCSGObject | OctreeCSG {
     if (obj instanceof ArrayBuffer) {
-        return decodeOctree(obj, materialDefinitions);
+        return OctreeCSG.decode(obj, materialDefinitions);
     } else {
         return decodeOctreeCSGObject(obj, materialDefinitions);
     }
@@ -62,12 +60,11 @@ globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
                 const materialDefinitions = message.data.materialDefinitions;
                 const result = OctreeCSG.operation(
                     decodeOctreeCSGObject(message.data.operation, materialDefinitions),
-                    materialDefinitions,
-                    false,
+                    materialDefinitions
                 );
 
                 const transferables = new Array<ArrayBuffer>();
-                const buffer = encodeOctree(result, materialDefinitions, transferables);
+                const buffer = result.encode(materialDefinitions, transferables);
 
                 postMessage(<JobResult>{
                     success: true,

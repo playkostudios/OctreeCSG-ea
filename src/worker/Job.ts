@@ -1,5 +1,3 @@
-import encodeOctree from './encode-octree';
-import decodeOctree from './decode-octree';
 import OctreeCSG from '../base/OctreeCSG';
 import { JobError } from './JobError';
 
@@ -42,7 +40,7 @@ function encodeOctreeCSGObject(obj: OctreeCSGObject, materialDefinitions: Materi
 
 function encodeOctreeCSGObjectOrCSG(obj: OctreeCSGObject | OctreeCSG, materialDefinitions: MaterialDefinitions, transferables: Array<ArrayBuffer>): EncodedOctreeCSGObjectArgument {
     if (obj instanceof OctreeCSG) {
-        return encodeOctree(obj, materialDefinitions, transferables);
+        return obj.encode(materialDefinitions, transferables);
     } else {
         return encodeOctreeCSGObject(obj, materialDefinitions, transferables);
     }
@@ -90,7 +88,7 @@ export default class Job {
 
     resolve(buffer: ArrayBuffer, materialDefinitions: MaterialDefinitions | null) {
         try {
-            this.resolveCallback(decodeOctree(buffer, materialDefinitions));
+            this.resolveCallback(OctreeCSG.decode(buffer, materialDefinitions));
         } catch(e) {
             this.rejectCallback(JobError.DecodeFailure(e));
         }

@@ -6,19 +6,20 @@ import { PolygonState } from '../math/Polygon';
 import { tmpm3, tv0 } from '../math/temp';
 import Box3 from '../math/Box3';
 import Ray from '../math/Ray';
-
-import type { Polygon } from '../math/Polygon';
-import type Triangle from '../math/Triangle';
-
+import { mat3, mat4, vec3 } from 'gl-matrix';
+import { MaterialDefinitions, MaterialAttributeTransform, MaterialAttributeValueType } from './MaterialDefinition';
+import { encodePoint, encodePointDatum } from '../worker/encode-point';
 import { JobError, JobFailReason } from '../worker/JobError';
 import TriangleHasher from './TriangleHasher';
 import { CSG_Rules } from './CSGRule';
+import countExtraVertexBytes from '../worker/count-extra-vertex-bytes';
+import { decodePoint, decodePointDatum } from '../worker/decode-point';
+import { Polygon } from '../math/Polygon';
 
+import type Triangle from '../math/Triangle';
 import type { OctreeCSGObject } from './OctreeCSGObject';
 import type { CSGRulesArray } from './CSGRule';
-
-import { mat3, mat4, vec3 } from 'gl-matrix';
-import { MaterialDefinitions, MaterialAttributeTransform } from './MaterialDefinition';
+import type { EncodedOctreeCSG } from '../worker/EncodedOctreeCSGObject';
 
 const _v1 = vec3.create();
 const _v2 = vec3.create();
@@ -32,6 +33,11 @@ interface RayIntersect {
     polygon: Polygon,
     position: vec3
 }
+
+type PolygonCounts = Map<number, number>;
+type SectionOffsets = Map<number, number>;
+
+const uint32Max = 2 ** 32 - 1;
 
 export default class OctreeCSG {
     protected polygons: Polygon[];
@@ -47,6 +53,8 @@ export default class OctreeCSG {
     static useWindingNumber = false;
     static maxLevel = 16;
     static polygonsPerTree = 100;
+    static readonly maxSectionID = uint32Max;
+    static readonly maxMaterialID = uint32Max;
 
     constructor(box?: Box3, parent: OctreeCSG | null = null) {
         this.polygons = [];
@@ -693,6 +701,312 @@ export default class OctreeCSG {
 
     dispose(deletePolygons = true) {
         this.delete(deletePolygons);
+    }
+
+    private countEncodingBytes(materialDefinitions: MaterialDefinitions, octreeOffsets: Map<OctreeCSG, number>, octreePolygonCounts: Map<OctreeCSG, PolygonCounts>, octreeSectionOffsets: Map<OctreeCSG, SectionOffsets>, bytesCount = 0) {
+        octreeOffsets.set(this, bytesCount);
+
+        // count space for octree header (box + flags)
+        // flags and section count
+        bytesCount += 5;
+
+        // box min+max
+        if (this.box) {
+            bytesCount += 24;
+        }
+
+        // count polygons for each material
+        const polygonCounts = new Map<number, number>();
+
+        for (const polygon of this.polygons) {
+            if (!polygon.valid || !polygon.originalValid) {
+                continue;
+            }
+
+            const materialID = polygon.shared;
+
+            if (materialID < 0 || materialID > OctreeCSG.maxMaterialID) {
+                throw new Error(`Invalid material ID (${materialID}) for polygon. Valid range: 0-${OctreeCSG.maxMaterialID}`);
+            }
+
+            const polygonCount = (polygonCounts.get(materialID) ?? 0) + 1;
+            polygonCounts.set(materialID, polygonCount);
+        }
+
+        // allocate buffer and get section offsets
+        const sectionOffsets = new Map<number, number>();
+
+        for (const [materialID, polygonCount] of polygonCounts) {
+            sectionOffsets.set(materialID, bytesCount);
+            const extraBytes = countExtraVertexBytes(materialDefinitions, materialID);
+            bytesCount += 8 + polygonCount * (12 + extraBytes) * 3;
+        }
+
+        octreePolygonCounts.set(this, polygonCounts);
+        octreeSectionOffsets.set(this, sectionOffsets);
+
+        // count space for subtrees
+        const subTreeCount = this.subTrees.length;
+        if (subTreeCount > 0) {
+            if (subTreeCount !== 8) {
+                throw new Error(`Unexpected sub-tree count. Expected 8, got ${subTreeCount}`);
+            }
+
+            for (const subTree of this.subTrees) {
+                bytesCount = subTree.countEncodingBytes(materialDefinitions, octreeOffsets, octreePolygonCounts, octreeSectionOffsets, bytesCount);
+            }
+        }
+
+        return bytesCount;
+    }
+
+    private encodeBytes(view: DataView, materialDefinitions: MaterialDefinitions, octreeOffsets: Map<OctreeCSG, number>, octreePolygonCounts: Map<OctreeCSG, PolygonCounts>, octreeSectionOffsets: Map<OctreeCSG, SectionOffsets>) {
+        let octreeOffset = octreeOffsets.get(this) as number;
+        const polygonCounts = octreePolygonCounts.get(this) as PolygonCounts;
+        const sectionOffsets = octreeSectionOffsets.get(this) as SectionOffsets;
+
+        // populate octree header
+        // flags
+        const sectionCount = polygonCounts.size;
+        view.setUint32(octreeOffset, sectionCount);
+        octreeOffset += 4;
+
+        const hasBox = this.box !== undefined;
+        const flags = (hasBox ? 0b00000001 : 0)
+                    | ((this.subTrees.length > 0) ? 0b00000010 : 0)
+                    | (this.needsRebuild ? 0b00000100 : 0);
+
+        view.setUint8(octreeOffset, flags);
+        octreeOffset++;
+
+        if (hasBox) {
+            const box = this.box as Box3;
+            encodePointDatum(box.min, MaterialAttributeValueType.Vec3, view, octreeOffset);
+            octreeOffset += 12;
+            encodePointDatum(box.max, MaterialAttributeValueType.Vec3, view, octreeOffset);
+        }
+
+        // populate section headers
+        for (const [materialID, polygonCount] of polygonCounts) {
+            let sectionStart = sectionOffsets.get(materialID) as number;
+
+            // material ID uint32
+            view.setUint32(sectionStart, materialID);
+            sectionStart += 4;
+
+            // polygon count uint32
+            view.setUint32(sectionStart, polygonCount);
+            sectionStart += 4;
+
+            sectionOffsets.set(materialID, sectionStart);
+        }
+
+        // encode polygons
+        for (const polygon of this.polygons) {
+            // get material ID of polygon and current offset for section
+            const materialID = polygon.shared;
+            let offset = sectionOffsets.get(materialID) as number;
+
+            // encode position and extra data
+            const attributes = materialDefinitions.get(materialID);
+            offset = encodePoint(polygon.vertices[0], attributes, view, offset);
+            offset = encodePoint(polygon.vertices[1], attributes, view, offset);
+            offset = encodePoint(polygon.vertices[2], attributes, view, offset);
+            sectionOffsets.set(materialID, offset);
+        }
+
+        // encode subtrees
+        for (const subTree of this.subTrees) {
+            subTree.encodeBytes(view, materialDefinitions, octreeOffsets, octreePolygonCounts, octreeSectionOffsets);
+        }
+    }
+
+    encode(materialDefinitions: MaterialDefinitions, transferables: Array<ArrayBuffer>): EncodedOctreeCSG {
+        // XXX: this format is streamable; you don't need the entire encoded data to
+        // start adding polygons, they can be added as they are received, as long as
+        // the messages are received sequentially. this could lead to some
+        // interesting memory optimisations in the future if we ever decide to split
+        // the buffer into smaller ones and essentially stream polygons to the
+        // octree on the worker
+
+        // buffer with all polygon data. polygons are grouped in sections, where one
+        // section contains all polygons for a particular material ID. octree packed
+        // format. octree packed format:
+        //     [bytes] : [value]
+        // 4           : sections count (uint32)
+        // 1           : flags
+        // ; flag bits:
+        // ; - bit 0: has box
+        // ; - bit 1: has subtrees
+        // ; - bit 2: needs rebuild
+        // ; - bit 3-7: unused
+        // 12          : box min (only included if box flag is set) (v3_f32)
+        // 12          : box max (only included if box flag is set) (v3_f32)
+        // (see below) : sections
+        // ?*8         : 8 subtrees' data (only included if subtrees flag is set)
+
+        // section packed format:
+        // ; let N be the polygon count
+        // ; let M be the total extra property bytes per vertex for this material
+        //    [bytes] : [value]
+        // 4          : material ID (uint32)
+        // 4          : polygon count (uint32)
+        // N*(12+M)*3 : polygon data
+        //
+        // material sections are included one after the other, in continuous memory,
+        // but not in a specific order. for example:
+        // [material 0 section data][material 2 section data][material 1 section data]...
+        //
+        // polygon data packed format:
+        // ; let X be the number of extra vertex properties
+        // [bytes] : [value]
+        // 12      : vertex A position (v3_f32)
+        // ??      : vertex A extra attribute 0 (??)
+        // ??      : vertex A extra attribute 1 (??)
+        // ...
+        // ??      : vertex A extra attribute X-1 (??)
+        // 12      : vertex B position (v3_f32)
+        // ??      : vertex B extra attribute 0 (??)
+        // ??      : vertex B extra attribute 1 (??)
+        // ...
+        // ??      : vertex B extra attribute X-1 (??)
+        // 12      : vertex C position (v3_f32)
+        // ??      : vertex C extra attribute 0 (??)
+        // ??      : vertex C extra attribute 1 (??)
+        // ...
+        // ??      : vertex C extra attribute X-1 (??)
+        //
+        // example polygon data format if the extra vertex properties were:
+        // ; attribute 0: vec3 float32 normals
+        // ; attribute 1: vec4 float32 tangents
+        // ; attribute 2: vec2 float32 uvs
+        // ; attribute 3: vec3 float32 colors
+        // [bytes] : [value]
+        // 12      : vertex A position (v3_f32)
+        // 12      : vertex A normal (extra attribute 0) (v3_f32)
+        // 16      : vertex A tangent (extra attribute 1) (v4_f32)
+        // 8       : vertex A uv (extra attribute 2) (v2_f32)
+        // 12      : vertex A color (extra attribute 3) (v3_f32)
+        // 12      : vertex B position (v3_f32)
+        // 12      : vertex B normal (extra attribute 0) (v3_f32)
+        // 16      : vertex B tangent (extra attribute 1) (v4_f32)
+        // 8       : vertex B uv (extra attribute 2) (v2_f32)
+        // 12      : vertex B color (extra attribute 3) (v3_f32)
+        // 12      : vertex C position (v3_f32)
+        // 12      : vertex C normal (extra attribute 0) (v3_f32)
+        // 16      : vertex C tangent (extra attribute 1) (v4_f32)
+        // 8       : vertex C uv (extra attribute 2) (v2_f32)
+        // 12      : vertex C color (extra attribute 3) (v3_f32)
+
+        const octreeOffsets = new Map<OctreeCSG, number>();
+        const octreePolygonCounts = new Map<OctreeCSG, PolygonCounts>();
+        const octreeSectionOffsets = new Map<OctreeCSG, SectionOffsets>();
+
+        const bytesCount = this.countEncodingBytes(materialDefinitions, octreeOffsets, octreePolygonCounts, octreeSectionOffsets)
+
+        const buffer = new ArrayBuffer(bytesCount);
+        const view = new DataView(buffer);
+
+        this.encodeBytes(view, materialDefinitions, octreeOffsets, octreePolygonCounts, octreeSectionOffsets);
+
+        transferables.push(buffer);
+        return buffer;
+    }
+
+    private static decodeBytes(view: DataView, byteOffset: number, byteLength: number, parent: OctreeCSG | null, materialDefinitions: MaterialDefinitions | null): [octree: OctreeCSG, byteOffset: number] {
+        // validate remaining space for octree header
+        if (byteOffset + 5 > byteLength) {
+            throw new Error(`Invalid octree; expected octree header, but there are not enough bytes left for it`);
+        }
+
+        // make output octree
+        const octree = new OctreeCSG(undefined, parent);
+
+        // decode octree header
+        const sectionsCount = view.getUint32(byteOffset);
+        byteOffset += 4;
+
+        const flags = view.getUint8(byteOffset);
+        byteOffset++;
+
+        const hasBox = (flags & 0b00000001) > 0;
+        const hasSubTrees = (flags & 0b00000010) > 0;
+        octree.needsRebuild = (flags & 0b00000100) > 0;
+
+        if (hasBox) {
+            if (byteOffset + 24 > byteLength) {
+                throw new Error(`Invalid octree; expected octree bounding box in header, but there are not enough bytes left for it`);
+            }
+
+            const min = decodePointDatum(MaterialAttributeValueType.Vec3, view, byteOffset) as vec3;
+            byteOffset += 12;
+            const max = decodePointDatum(MaterialAttributeValueType.Vec3, view, byteOffset) as vec3;
+            byteOffset += 12;
+            octree.box = new Box3(min, max);
+        }
+
+        // decode material sections
+        for (let i = 0; i < sectionsCount; i++) {
+            // check if there's space for the header
+            if (byteOffset + 6 > byteLength) {
+                throw new Error(`Invalid material section; expected material section header, but there are not enough bytes left for it`);
+            }
+
+            // parse header
+            const materialID = view.getUint32(byteOffset);
+            byteOffset += 4;
+            const polygonCount = view.getUint32(byteOffset);
+            byteOffset += 4;
+
+            // calculate polygon size for this material
+            const extraBytes = countExtraVertexBytes(materialDefinitions, materialID);
+            const vertexBytes = 12 + extraBytes;
+
+            // check if there's space for the polygon data
+            const sectionBytes = polygonCount * vertexBytes * 3;
+            if (sectionBytes === 0) {
+                throw new Error(`Invalid material section; expected at least one polygon, got none`);
+            }
+
+            const sectionEnd = byteOffset + sectionBytes;
+            if (sectionEnd > byteLength) {
+                throw new Error(`Invalid material section; expected material section polygon data, but there are not enough bytes left for it`);
+            }
+
+            // parse polygons (groups of 3 vertices)
+            const attributes = materialDefinitions === null ? undefined : materialDefinitions.get(materialID);
+            while (byteOffset < sectionEnd) {
+                const a = decodePoint(attributes, view, byteOffset);
+                byteOffset += vertexBytes;
+                const b = decodePoint(attributes, view, byteOffset);
+                byteOffset += vertexBytes;
+                const c = decodePoint(attributes, view, byteOffset);
+                byteOffset += vertexBytes;
+
+                const polygon = new Polygon([a, b, c], materialID);
+                polygon.originalValid = true;
+                octree.polygons.push(polygon);
+            }
+        }
+
+        // decode subtrees
+        if (hasSubTrees) {
+            for (let i = 0; i < 8; i++) {
+                let subTree;
+                [subTree, byteOffset] = OctreeCSG.decodeBytes(view, byteOffset, byteLength, octree, materialDefinitions);
+                octree.subTrees.push(subTree);
+            }
+        }
+
+        return [octree, byteOffset];
+    }
+
+    static decode(buffer: ArrayBuffer, materialDefinitions: MaterialDefinitions | null): OctreeCSG {
+        const [octree, _byteOffset] = OctreeCSG.decodeBytes(
+            new DataView(buffer), 0, buffer.byteLength, null, materialDefinitions
+        );
+
+        return octree;
     }
 
     protected getPolygonCloneCallback(cbFunc: (polygon: Polygon, triangleHasher: TriangleHasher) => unknown, triangleHasher: TriangleHasher) {
