@@ -98,7 +98,7 @@ export default class OctreeCSGJobDispatcher {
 
         // finalize promise
         if (event.data.success) {
-            job.resolve(event.data.buffer, event.data.materialDefinitions);
+            job.resolve(event.data.buffer, event.data.materials);
         } else {
             job.reject(JobError.OperationFailure(event.data.error));
         }
@@ -126,10 +126,10 @@ export default class OctreeCSGJobDispatcher {
         worker.postMessage(...job.getMessage(minWorkerIndex, jobIndex));
     }
 
-    dispatch(operation: OctreeCSGObject, materialDefinitions: MaterialDefinitions) {
+    dispatch(operation: OctreeCSGObject, materials: MaterialDefinitions) {
         return new Promise((resolve: (octree: OctreeCSG) => void, reject: (error: JobError) => void) => {
             // create job
-            const job = new Job(operation, materialDefinitions, resolve, reject)
+            const job = new Job(operation, materials, resolve, reject)
             const jobIndex = this.nextJobIndex++;
             this.waitingJobs.set(jobIndex, job);
 

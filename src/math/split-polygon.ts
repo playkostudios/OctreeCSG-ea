@@ -26,8 +26,8 @@ const FRONT = 1;
 const BACK = 2;
 const SPANNING = 3;
 
-export function splitPolygonByPlane(polygon: Polygon, plane: Plane, materialDefinitions: MaterialDefinitions, result: ReturnPolygon[] = []) {
-    const attributes = materialDefinitions.get(polygon.shared);
+export function splitPolygonByPlane(polygon: Polygon, plane: Plane, materials: MaterialDefinitions, result: ReturnPolygon[] = []) {
+    const attributes = materials.get(polygon.shared);
 
     const returnPolygon = <ReturnPolygon>{
         polygon: polygon,

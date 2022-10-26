@@ -1,22 +1,21 @@
 import { mat4, quat, vec3 } from 'gl-matrix';
 import OctreeCSG from '../base/OctreeCSG';
 import { Polygon } from '../math/Polygon';
+import CSGPrimitiveMaterialAttributes from './CSGPrimitiveMaterialAttributes';
 
 import type { mat3 } from 'gl-matrix';
 
 import type Vertex from '../math/Vertex';
 import type Box3 from '../math/Box3';
-import type { MaterialDefinitions } from '../base/MaterialDefinition';
 
 export type CSGPrimitiveOptions = {
     materialID?: number,
     outputMatrix?: mat4,
+    inverted?: boolean,
 } & ({
-    materialDefinitions: MaterialDefinitions,
     matrix: mat4,
     normalMatrix?: mat3,
 } | {
-    materialDefinitions: MaterialDefinitions,
     rotation?: quat | vec3,
     translation?: vec3,
     scale?: vec3,
@@ -31,11 +30,14 @@ export class CSGPrimitive extends OctreeCSG {
             throw new Error('Input triangle vertices array has a non-multiple-of-three length');
         }
 
-        super(box);
+        const materialID = options?.materialID ?? 0;
+        const materials = new Map([[materialID, CSGPrimitiveMaterialAttributes]]);
+
+        super(materials, box);
 
         // turn vertex array to triangle array
         for (let i = 0; i < vertexCount; i += 3) {
-            const polygon = new Polygon(triangleVertices.slice(i, i + 3), options?.materialID);
+            const polygon = new Polygon(triangleVertices.slice(i, i + 3), materialID);
             polygon.originalValid = true;
             this.polygons.push(polygon);
         }
@@ -51,21 +53,13 @@ export class CSGPrimitive extends OctreeCSG {
         const outputMatrix = options.outputMatrix;
 
         if ('matrix' in options) {
-            if (!options.materialDefinitions) {
-                throw new Error('Material definitions must be provided if transforming a CSG primitive');
-            }
-
             const matrix = options.matrix;
-            this.applyMatrix(options.materialDefinitions, matrix, options.normalMatrix);
+            this.applyMatrix(matrix, options.normalMatrix);
 
             if (outputMatrix) {
                 mat4.copy(outputMatrix, matrix);
             }
         } else if ('rotation' in options || 'translation' in options || 'scale' in options) {
-            if (!options.materialDefinitions) {
-                throw new Error('Material definitions must be provided if transforming a CSG primitive');
-            }
-
             // make transformation matrix
             const matrix = mat4.create();
 
@@ -116,13 +110,18 @@ export class CSGPrimitive extends OctreeCSG {
                 mat4.fromScaling(matrix, options.scale as vec3);
             }
 
-            this.applyMatrix(options.materialDefinitions, matrix);
+            this.applyMatrix(matrix);
 
             if (outputMatrix) {
                 mat4.copy(outputMatrix, matrix);
             }
         } else if (outputMatrix) {
             mat4.identity(outputMatrix);
+        }
+
+        // invert if needed
+        if (options?.inverted) {
+            this.invert();
         }
     }
 }

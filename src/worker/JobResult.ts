@@ -4,7 +4,7 @@ type JobResult = {
     success: true,
     jobIndex: number,
     buffer: ArrayBuffer,
-    materialDefinitions: MaterialDefinitions | null,
+    materials: MaterialDefinitions,
 } | {
     success: false,
     jobIndex: number,

@@ -6,7 +6,7 @@ import type WorkerRequest from './worker/WorkerRequest';
 import type JobResult from './worker/JobResult';
 import type { MaterialDefinitions } from './base/MaterialDefinition';
 
-function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject, materialDefinitions: MaterialDefinitions): OctreeCSGObject {
+function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject, materials: MaterialDefinitions): OctreeCSGObject {
     switch (obj.op) {
         case 'union':
         case 'subtract':
@@ -14,8 +14,8 @@ function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject, materialDefinitions:
         {
             return <OctreeCSGObject>{
                 op: obj.op,
-                objA: decodeOctreeCSGObjectOrCSG(obj.objA, materialDefinitions),
-                objB: decodeOctreeCSGObjectOrCSG(obj.objB, materialDefinitions),
+                objA: decodeOctreeCSGObjectOrCSG(obj.objA, materials),
+                objB: decodeOctreeCSGObjectOrCSG(obj.objB, materials),
             }
         }
         case 'unionArray':
@@ -25,7 +25,7 @@ function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject, materialDefinitions:
             const decodedObjs = new Array<OctreeCSGObjectArgument>();
 
             for (const octreeObj of obj.objs) {
-                decodedObjs.push(decodeOctreeCSGObjectOrCSG(octreeObj, materialDefinitions));
+                decodedObjs.push(decodeOctreeCSGObjectOrCSG(octreeObj, materials));
             }
 
             return <OctreeCSGObject>{
@@ -38,11 +38,11 @@ function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject, materialDefinitions:
     }
 }
 
-function decodeOctreeCSGObjectOrCSG(obj: EncodedOctreeCSGObjectArgument, materialDefinitions: MaterialDefinitions): OctreeCSGObject | OctreeCSG {
+function decodeOctreeCSGObjectOrCSG(obj: EncodedOctreeCSGObjectArgument, materials: MaterialDefinitions): OctreeCSGObject | OctreeCSG {
     if (obj instanceof ArrayBuffer) {
-        return OctreeCSG.decode(obj, materialDefinitions);
+        return OctreeCSG.decode(obj, materials);
     } else {
-        return decodeOctreeCSGObject(obj, materialDefinitions);
+        return decodeOctreeCSGObject(obj, materials);
     }
 }
 
@@ -57,20 +57,19 @@ globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
             logWorker(console.debug, `Job started`);
 
             try {
-                const materialDefinitions = message.data.materialDefinitions;
+                const materials = message.data.materials;
                 const result = OctreeCSG.operation(
-                    decodeOctreeCSGObject(message.data.operation, materialDefinitions),
-                    materialDefinitions
+                    decodeOctreeCSGObject(message.data.operation, materials)
                 );
 
                 const transferables = new Array<ArrayBuffer>();
-                const buffer = result.encode(materialDefinitions, transferables);
+                const buffer = result.encode(materials, transferables);
 
                 postMessage(<JobResult>{
                     success: true,
                     jobIndex: message.data.jobIndex,
                     buffer,
-                    materialDefinitions,
+                    materials,
                 });
             } catch(error) {
                 logWorker(console.error, error);

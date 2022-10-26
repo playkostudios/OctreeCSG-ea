@@ -58,9 +58,9 @@ export class Polygon {
         this.triangle.set(this.vertices[0].pos, this.vertices[1].pos, this.vertices[2].pos);
     }
 
-    applyMatrix(materialDefinitions: MaterialDefinitions, matrix: mat4, normalMatrixIn?: mat3) {
+    applyMatrix(materials: MaterialDefinitions, matrix: mat4, normalMatrixIn?: mat3) {
         let normalMatrix: undefined | mat3;
-        const attributes = materialDefinitions.get(this.shared);
+        const attributes = materials.get(this.shared);
 
         if (attributes) {
             for (const propDef of attributes) {
@@ -133,8 +133,8 @@ export class Polygon {
         return polygon;
     }
 
-    flip(materialDefinitions: MaterialDefinitions) {
-        const attributes = materialDefinitions.get(this.shared);
+    flip(materials: MaterialDefinitions) {
+        const attributes = materials.get(this.shared);
         this.vertices.reverse().forEach(v => v.flip(attributes));
         const tmp = this.triangle.a;
         this.triangle.a = this.triangle.c;

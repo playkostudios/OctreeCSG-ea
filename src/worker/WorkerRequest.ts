@@ -5,7 +5,7 @@ type WorkerRequest = {
     type: 'operation',
     jobIndex: number,
     operation: EncodedOctreeCSGObject,
-    materialDefinitions: MaterialDefinitions,
+    materials: MaterialDefinitions,
 };
 
 export default WorkerRequest;

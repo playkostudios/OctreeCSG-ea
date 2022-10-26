@@ -5,6 +5,7 @@ import type { vec3 } from 'gl-matrix';
 import type { Polygon } from '../math/Polygon';
 import type Vertex from '../math/Vertex';
 import type { MaterialAttribute, MaterialAttributes, MaterialDefinitions } from '../base/MaterialDefinition';
+import type OctreeCSG from '../base/OctreeCSG';
 
 export type ProjectorCondition = (polygon: Polygon) => boolean;
 export type AttributesMap = Map<number, Array<number | null>>;
@@ -76,31 +77,31 @@ export abstract class Projector<ExtraPolygonDataType = undefined> {
         this.projectVertex(polygon.vertices[2], attributeMap, newUVsIdx, attributes, extraPolygonData);
     }
 
-    private handlePolygon(polygon: Polygon, materialMap: Map<number, number>, attributeMaps: AttributesMap, newUVsMap: NewUVsMap, materialDefinitions: MaterialDefinitions | null) {
+    private handlePolygon(polygon: Polygon, materialMap: Map<number, number>, attributeMaps: AttributesMap, newUVsMap: NewUVsMap, materials: MaterialDefinitions | null) {
         if (this.canProjectToPolygon(polygon)) {
             const newMaterialID = materialMap.get(polygon.shared);
             if (newMaterialID !== undefined) {
-                this.projectSingle(polygon, newMaterialID, attributeMaps, newUVsMap.get(polygon.shared) ?? null, materialDefinitions?.get(polygon.shared) ?? null);
+                this.projectSingle(polygon, newMaterialID, attributeMaps, newUVsMap.get(polygon.shared) ?? null, materials?.get(polygon.shared) ?? null);
             }
         }
     }
 
-    project(polygons: Polygon | Iterable<Polygon>, materialMap: Map<number, number>, materialDefinitions: MaterialDefinitions | null = null) {
+    private makeAttributesMap(materialMap: Map<number, number>, materials: MaterialDefinitions | null): [attributeMaps: AttributesMap, newUVsMap: NewUVsMap] {
         // validate material map and build attribute map for each material being
         // mapped
         const attributeMaps: AttributesMap = new Map();
         const newUVsMap: NewUVsMap = new Map();
 
-        if (materialDefinitions) {
+        if (materials) {
             for (const [a, b] of materialMap) {
-                const bAttributes = materialDefinitions.get(b);
+                const bAttributes = materials.get(b);
 
                 if (bAttributes === undefined || bAttributes.length === 0) {
                     attributeMaps.set(a, []);
                     continue;
                 }
 
-                const aAttributes = materialDefinitions.get(a);
+                const aAttributes = materials.get(a);
 
                 if (aAttributes === undefined || aAttributes.length === 0) {
                     throw new Error(`Projection failed; material ID ${a} has no extra attributes and is not compatible with material ID ${b}`);
@@ -152,15 +153,72 @@ export abstract class Projector<ExtraPolygonDataType = undefined> {
             }
         }
 
+        return [attributeMaps, newUVsMap];
+    }
+
+    private projectSubtree(octree: OctreeCSG, materialMap: Map<number, number>, materials: MaterialDefinitions | null, attributeMaps: AttributesMap, newUVsMap: NewUVsMap) {
+        // project to all polygons in this level
+        for (const polygon of octree.treePolygons) {
+            this.handlePolygon(polygon, materialMap, attributeMaps, newUVsMap, materials);
+        }
+
+        // replace material definitions if needed
+        if (materials) {
+            octree.materials = materials;
+        }
+
+        // go to lower levels
+        for (const subTree of octree.lowerLevels) {
+            this.projectSubtree(subTree, materialMap, materials, attributeMaps, newUVsMap);
+        }
+    }
+
+    projectOctree(octree: OctreeCSG, materialMap: Map<number, number>, extraMaterials: MaterialDefinitions | null = null) {
+        // merge material definitions. must not have conflicts
+        let materials: MaterialDefinitions | null = null;
+        if (extraMaterials && extraMaterials.size > 0) {
+            materials = new Map(octree.materials.entries());
+
+            for (const [materialID, extraAttributes] of extraMaterials) {
+                materials.set(materialID, extraAttributes);
+            }
+        }
+
+        // if a destination material is missing, use the source material
+        for (const [source, destination] of materialMap) {
+            if (!octree.materials.has(destination)) {
+                if (materials && materials.has(destination)) {
+                    continue;
+                }
+
+                const attrs = octree.materials.get(source) as MaterialAttributes;
+
+                if (materials) {
+                    materials.set(destination, attrs);
+                } else {
+                    materials = new Map(octree.materials.entries());
+                    materials.set(destination, attrs);
+                }
+            }
+        }
+
+        const [attributeMaps, newUVsMap] = this.makeAttributesMap(materialMap, materials);
+
+        this.projectSubtree(octree, materialMap, materials, attributeMaps, newUVsMap);
+    }
+
+    project(polygons: Polygon | Iterable<Polygon>, materialMap: Map<number, number>, materials: MaterialDefinitions | null = null) {
+        const [attributeMaps, newUVsMap] = this.makeAttributesMap(materialMap, materials);
+
         // project to polygons
         if (Symbol.iterator in polygons) {
             // iterable
             for (const polygon of polygons as Iterable<Polygon>) {
-                this.handlePolygon(polygon, materialMap, attributeMaps, newUVsMap, materialDefinitions);
+                this.handlePolygon(polygon, materialMap, attributeMaps, newUVsMap, materials);
             }
         } else {
             // single polygon
-            this.handlePolygon(polygons as Polygon, materialMap, attributeMaps, newUVsMap, materialDefinitions);
+            this.handlePolygon(polygons as Polygon, materialMap, attributeMaps, newUVsMap, materials);
         }
     }
 }
