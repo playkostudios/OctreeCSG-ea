@@ -622,7 +622,7 @@ export default class OctreeCSG {
         }
 
         if (this.polygons.length > 0) {
-            let polygonStack = this.polygons.filter(polygon => polygon.valid && polygon.intersects && polygon.state === PolygonState.Undecided);
+            const polygonStack = this.polygons.filter(polygon => polygon.valid && polygon.intersects && polygon.state === PolygonState.Undecided);
 
             let currentPolygon;
             while ((currentPolygon = polygonStack.pop())) { // XXX assignment is on purpose
@@ -663,11 +663,8 @@ export default class OctreeCSG {
                 }
             }
 
-            polygonStack = this.polygons.filter(polygon => polygon.valid && polygon.intersects);
-            let inside = false;
-
-            while ((currentPolygon = polygonStack.pop())) { // XXX assignment is on purpose
-                if (!currentPolygon.valid) {
+            for (const polygon of this.polygons) {
+                if (!polygon.valid || !polygon.intersects) {
                     continue;
                 }
 
@@ -675,25 +672,25 @@ export default class OctreeCSG {
                     throw new Error('Octree has no box');
                 }
 
-                inside = false;
-                if (targetOctree.box.containsPoint(currentPolygon.midpoint)) {
+                let inside = false;
+                if (targetOctree.box.containsPoint(polygon.midpoint)) {
                     if (useWindingNumber) {
-                        inside = polyInside_WindingNumber_buffer(targetOctreeBuffer as Float32Array, currentPolygon.midpoint, currentPolygon.coplanar);
+                        inside = polyInside_WindingNumber_buffer(targetOctreeBuffer as Float32Array, polygon.midpoint, polygon.coplanar);
                     } else {
-                        const point = vec3.copy(_v2, currentPolygon.midpoint);
+                        const point = vec3.copy(_v2, polygon.midpoint);
 
                         vec3.copy(_ray.origin, point);
-                        vec3.copy(_rayDirection, currentPolygon.plane.unsafeNormal);
-                        vec3.copy(_ray.direction, currentPolygon.plane.unsafeNormal);
+                        vec3.copy(_rayDirection, polygon.plane.unsafeNormal);
+                        vec3.copy(_ray.direction, polygon.plane.unsafeNormal);
 
                         let closestInt = targetOctree.closestRayIntersection(_ray);
                         if (closestInt && vec3.dot(_rayDirection, closestInt.polygon.plane.unsafeNormal) > 0) {
                             inside = true;
-                        } else if (currentPolygon.coplanar) {
+                        } else if (polygon.coplanar) {
                             for (const _wP_EPS of _wP_EPS_ARR) {
                                 vec3.add(_ray.origin, point, _wP_EPS);
-                                vec3.copy(_rayDirection, currentPolygon.plane.unsafeNormal);
-                                vec3.copy(_ray.direction, currentPolygon.plane.unsafeNormal);
+                                vec3.copy(_rayDirection, polygon.plane.unsafeNormal);
+                                vec3.copy(_ray.direction, polygon.plane.unsafeNormal);
 
                                 closestInt = targetOctree.closestRayIntersection(_ray);
                                 if (closestInt && vec3.dot(_rayDirection, closestInt.polygon.plane.unsafeNormal) > 0) {
@@ -705,7 +702,7 @@ export default class OctreeCSG {
                     }
                 }
 
-                currentPolygon.setState(inside ? PolygonState.Inside : PolygonState.Outside);
+                polygon.setState(inside ? PolygonState.Inside : PolygonState.Outside);
             }
         }
 
