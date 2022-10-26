@@ -58,8 +58,11 @@ globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
 
             try {
                 const materials = message.data.materials;
+                const options = message.data.options;
+
                 const result = OctreeCSG.operation(
-                    decodeOctreeCSGObject(message.data.operation, materials)
+                    decodeOctreeCSGObject(message.data.operation, materials),
+                    options
                 );
 
                 const transferables = new Array<ArrayBuffer>();

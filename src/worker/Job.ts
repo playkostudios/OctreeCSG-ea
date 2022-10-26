@@ -1,6 +1,7 @@
 import OctreeCSG from '../base/OctreeCSG';
 import { JobError } from './JobError';
 
+import type { OctreeCSGOptions } from '../base/OctreeCSG';
 import type { EncodedOctreeCSGObject, EncodedOctreeCSGObjectArgument } from './EncodedOctreeCSGObject';
 import type { OctreeCSGObject } from '../base/OctreeCSGObject';
 import type WorkerRequest from './WorkerRequest';
@@ -49,14 +50,16 @@ function encodeOctreeCSGObjectOrCSG(obj: OctreeCSGObject | OctreeCSG, materials:
 export default class Job {
     private operation: EncodedOctreeCSGObject | null;
     private materials: MaterialDefinitions | null;
+    private options?: OctreeCSGOptions;
     private transferables: Array<ArrayBuffer> | null;
     workerIndex: number | null = null;
 
-    constructor(operation: OctreeCSGObject, materials: MaterialDefinitions, private resolveCallback: (octree: OctreeCSG) => void, private rejectCallback: (error: JobError) => void) {
+    constructor(operation: OctreeCSGObject, materials: MaterialDefinitions, options: OctreeCSGOptions | undefined, private resolveCallback: (octree: OctreeCSG) => void, private rejectCallback: (error: JobError) => void) {
         // encode operation
         this.transferables = [];
         this.operation = encodeOctreeCSGObject(operation, materials, this.transferables);
         this.materials = materials;
+        this.options = options;
     }
 
     getMessage(workerIndex: number, jobIndex: number): [message: WorkerRequest, transferables: Array<ArrayBuffer>] {
@@ -66,10 +69,12 @@ export default class Job {
 
         const operation = this.operation;
         const materials = this.materials;
+        const options = this.options;
         const transferables = this.transferables;
 
         this.operation = null;
         this.materials = null;
+        this.options = undefined;
         this.transferables = null;
         this.workerIndex = workerIndex;
 
@@ -79,6 +84,7 @@ export default class Job {
                 jobIndex,
                 operation,
                 materials,
+                options,
             },
             transferables,
         ];
