@@ -3,12 +3,12 @@ import type Ray from './Ray';
 
 import { vec3 } from 'gl-matrix';
 
-const edge1 = vec3.create();
-const edge2 = vec3.create();
-const h = vec3.create();
-const s = vec3.create();
-const q = vec3.create();
-const RAY_EPSILON = 1e-7;
+const edge1: vec3 = [0, 0, 0];
+const edge2: vec3 = [0, 0, 0];
+const h: vec3 = [0, 0, 0];
+const s: vec3 = [0, 0, 0];
+const q: vec3 = [0, 0, 0];
+const RAY_EPSILON = 1e-8;
 
 export default function rayIntersectsTriangle(ray: Ray, triangle: Triangle, target = vec3.create()) {
     // XXX a big chunk of the computation time is spent here. it would be nice
