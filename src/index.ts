@@ -26,8 +26,17 @@ export { default as triangulate2DPolygon } from './helpers/triangulate-2d-polygo
 export { default as triangulateMonotone2DPolygon } from './helpers/triangulate-monotone-2d-polygon';
 export { curveExtrude, CurveExtrusionOptions } from './helpers/curve-extrusion-helper';
 export { rotationMinimizingCurveExtrude, RMFCurveExtrusionOptions } from './helpers/rmf-extrusion-helper';
+export { makeRotationMinimizingFrames } from './helpers/make-rotation-minimizing-frames';
+export * from './helpers/curve-frame';
 export { default as makeCirclePolyline } from './polylines/circle-polyline';
 export { default as makeCubePolyline } from './polylines/cube-polyline';
 export { default as makeRectanglePolyline } from './polylines/rectangle-polyline';
 export { default as makeRegularPolyline } from './polylines/regular-polyline';
 export { default as makeStarPolyline } from './polylines/star-polyline';
+export { default as CSGPrimitiveMaterialAttributes } from './primitives/CSGPrimitiveMaterialAttributes';
+export * from './base/MaterialDefinition';
+export * from './projectors/Projector';
+export * from './projectors/FlatProjector';
+export * from './projectors/TubeProjector';
+export * from './projectors/SphereProjector';
+export * from './projectors/CurveTubeProjector';

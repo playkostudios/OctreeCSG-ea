@@ -57,9 +57,9 @@ export class BaseCone extends CSGPrimitive {
                 an = bn = cn = Plane.calculateNormal(a, b, c);
             }
 
-            vertices[index++] = new Vertex(a, vec3.clone(cn));
-            vertices[index++] = new Vertex(b, bn);
-            vertices[index++] = new Vertex(c, vec3.clone(an));
+            vertices[index++] = new Vertex(a, [vec3.clone(cn)]);
+            vertices[index++] = new Vertex(b, [bn]);
+            vertices[index++] = new Vertex(c, [vec3.clone(an)]);
         }
 
         // make bounding box

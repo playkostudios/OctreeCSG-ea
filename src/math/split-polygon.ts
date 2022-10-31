@@ -6,6 +6,7 @@ import type Vertex from './Vertex';
 import type Plane from './Plane';
 
 import { vec3 } from 'gl-matrix';
+import { MaterialDefinitions } from '../base/MaterialDefinition';
 
 export enum ReturnPolygonType {
     Undecided = PolygonState.Undecided,
@@ -25,7 +26,9 @@ const FRONT = 1;
 const BACK = 2;
 const SPANNING = 3;
 
-export function splitPolygonByPlane(polygon: Polygon, plane: Plane, result: ReturnPolygon[] = []) {
+export function splitPolygonByPlane(polygon: Polygon, plane: Plane, materials: MaterialDefinitions, result: ReturnPolygon[] = []) {
+    const attributes = materials.get(polygon.shared);
+
     const returnPolygon = <ReturnPolygon>{
         polygon: polygon,
         type: ReturnPolygonType.Undecided
@@ -78,7 +81,7 @@ export function splitPolygonByPlane(polygon: Polygon, plane: Plane, result: Retu
                 if ((ti | tj) === SPANNING) {
                     vec3.sub(tv0, vj.pos, vi.pos);
                     const t = (plane.w - vec3.dot(plane.unsafeNormal, vi.pos)) / vec3.dot(plane.unsafeNormal, tv0);
-                    const v = vi.interpolate(vj, t);
+                    const v = vi.interpolate(vj, t, attributes);
                     f.push(v);
                     b.push(v.clone());
                 }

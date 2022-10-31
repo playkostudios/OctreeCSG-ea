@@ -28,12 +28,12 @@ function spherifyFace(spherifyPoint: SpherifyPointFunction, index: number, subDi
             const [c, cNorm] = spherifyPoint(inp, jnp, radius, origin, right, up);
             const [d, dNorm] = spherifyPoint(ip, jnp, radius, origin, right, up);
 
-            vertices[index++] = new Vertex(vec3.clone(a), vec3.clone(aNorm));
-            vertices[index++] = new Vertex(b, bNorm);
-            vertices[index++] = new Vertex(vec3.clone(c), vec3.clone(cNorm));
-            vertices[index++] = new Vertex(c, cNorm);
-            vertices[index++] = new Vertex(d, dNorm);
-            vertices[index++] = new Vertex(a, aNorm);
+            vertices[index++] = new Vertex(vec3.clone(a), [vec3.clone(aNorm)]);
+            vertices[index++] = new Vertex(b, [bNorm]);
+            vertices[index++] = new Vertex(vec3.clone(c), [vec3.clone(cNorm)]);
+            vertices[index++] = new Vertex(c, [cNorm]);
+            vertices[index++] = new Vertex(d, [dNorm]);
+            vertices[index++] = new Vertex(a, [aNorm]);
         }
     }
 

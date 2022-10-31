@@ -4,6 +4,8 @@ import Job from './Job';
 import type { OctreeCSGObject } from '../base/OctreeCSGObject';
 import type OctreeCSG from '../base/OctreeCSG';
 import type JobResult from './JobResult';
+import type { MaterialDefinitions } from '../base/MaterialDefinition';
+import { OctreeCSGOptions } from '../base/OctreeCSG';
 
 declare global {
     // eslint-disable-next-line no-var
@@ -19,14 +21,14 @@ export default class OctreeCSGJobDispatcher {
     private waitingJobs = new Map<number, Job>();
     private jobCounts = new Array<number>();
 
-    private initWorker(workers: Array<Worker>, workerPath: string, timeoutMS: number) {
+    private initWorker(workers: Array<Worker>, workerPath: string, timeoutMS: number, name: string) {
         return new Promise((resolve: (value: undefined) => void, reject: (reason: Error) => void) => {
             const timeout = setTimeout(() => {
                 worker.terminate();
                 reject(new Error('Timed out'));
             }, timeoutMS);
 
-            const worker = new Worker(workerPath, { type: 'classic' });
+            const worker = new Worker(workerPath, { type: 'classic', name });
             worker.onmessage = (message: MessageEvent<string>) => {
                 clearTimeout(timeout);
 
@@ -50,7 +52,7 @@ export default class OctreeCSGJobDispatcher {
             let workersDone = 0;
 
             for (let i = 0; i < workerCount; i++) {
-                this.initWorker(workers, workerPath, timeoutMS).catch((reason: Error) => {
+                this.initWorker(workers, workerPath, timeoutMS, `octreecsg-ea-${i}`).catch((reason: Error) => {
                     console.error('Failed to create OctreeCSG worker:', reason.message);
                 }).finally(() => {
                     if (++workersDone === workerCount) {
@@ -66,6 +68,9 @@ export default class OctreeCSGJobDispatcher {
                         }
 
                         this.workers = workers;
+                        this.jobCounts = new Array(actualWorkerCount);
+                        this.jobCounts.fill(0);
+
                         resolve(undefined); // XXX undefined so typescript shuts up
                     }
                 });
@@ -94,7 +99,7 @@ export default class OctreeCSGJobDispatcher {
 
         // finalize promise
         if (event.data.success) {
-            job.resolve(event.data.vertices, event.data.normals);
+            job.resolve(event.data.buffer, event.data.materials);
         } else {
             job.reject(JobError.OperationFailure(event.data.error));
         }
@@ -114,15 +119,18 @@ export default class OctreeCSGJobDispatcher {
             }
         }
 
+        // add job to worker job count
+        this.jobCounts[minWorkerIndex]++;
+
         // dispatch to chosen worker
         const worker = (this.workers as Array<Worker>)[minWorkerIndex];
         worker.postMessage(...job.getMessage(minWorkerIndex, jobIndex));
     }
 
-    dispatch(operation: OctreeCSGObject) {
+    dispatch(operation: OctreeCSGObject, materials: MaterialDefinitions, options?: OctreeCSGOptions) {
         return new Promise((resolve: (octree: OctreeCSG) => void, reject: (error: JobError) => void) => {
             // create job
-            const job = new Job(operation, resolve, reject)
+            const job = new Job(operation, materials, options, resolve, reject)
             const jobIndex = this.nextJobIndex++;
             this.waitingJobs.set(jobIndex, job);
 

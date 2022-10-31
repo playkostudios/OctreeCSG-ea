@@ -56,7 +56,6 @@ Merges two Octrees (octreeA and octreeB) to one Octree
 | --- | --- |
 | octreeA | First octree object |
 | octreeB | Second octree object |
-| buildTargetOctree | (Optional) Specifies if to build the target Octree tree or return a flat Octree (true / flase). **Default**: true |
 
 ### OctreeCSG.subtract:
 Subtracts octreeB from octreeA and returns the result Octree
@@ -65,7 +64,6 @@ Subtracts octreeB from octreeA and returns the result Octree
 | --- | --- |
 | octreeA | First octree object |
 | octreeB | Second octree object |
-| buildTargetOctree | (Optional) Specifies if to build the target Octree tree or return a flat Octree (true / flase). **Default**: true |
 
 ### OctreeCSG.intersect:
 Returns the intersection of octreeA and octreeB
@@ -74,7 +72,6 @@ Returns the intersection of octreeA and octreeB
 | --- | --- |
 | octreeA | First octree object |
 | octreeB | Second octree object |
-| buildTargetOctree | (Optional) Specifies if to build the target Octree tree or return a flat Octree (true / flase). **Default**: true |
 
 ### OctreeCSG.operation
 CSG Hierarchy of Operations (syntax may change), provides a simple method to combine several CSG operations into one
@@ -98,7 +95,6 @@ OctreeCSG provides 3 methods to perform CSG operations on an array of meshes / o
 | Parameter | Description |
 | --- | --- |
 | objArr | An array of meshes or octrees to perform the CSG operation on |
-| materialIndexMax | (Optional) Can be used to specify the maximum number of groups in the result Octree. **Default**: Infinity |
 
 List of Methods:
 - OctreeCSG.unionArray - Union operation on an array of meshes
@@ -142,3 +138,4 @@ IIFE, which increases the size of the worker script dramatically.
 - The triangle-triangle intersection logic and algorithm is based on this [code](https://github.com/benardp/contours/blob/master/freestyle/view_map/triangle_triangle_intersection.c)
 - The ray-box intersection logic and algorithm is based on these 3 articles: [part 1](https://tavianator.com/2011/ray_box.html), [part 2](https://tavianator.com/2015/ray_box_nan.html) and [part 3](https://tavianator.com/2022/ray_box_boundary.html)
 - The triangle-box intersection logic and algorithm is based on this [code](https://stackoverflow.com/questions/17458562/efficient-aabb-triangle-intersection-in-c-sharp/17503268#17503268), which in turn is based on this [paper](https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/code/tribox_tam.pdf)
+- The triangulation algorithms are based on the book `Computational Geometry: Algorithms and Applications` (ISBN `978-3-540-77973-5`)

@@ -1,13 +1,12 @@
-import encodeOctree from './worker/encode-octree';
-import decodeOctree from './worker/decode-octree';
 import OctreeCSG from './base/OctreeCSG';
 
 import type { EncodedOctreeCSGObject, EncodedOctreeCSGObjectArgument } from './worker/EncodedOctreeCSGObject';
 import type { OctreeCSGObject, OctreeCSGObjectArgument } from './base/OctreeCSGObject';
 import type WorkerRequest from './worker/WorkerRequest';
 import type JobResult from './worker/JobResult';
+import type { MaterialDefinitions } from './base/MaterialDefinition';
 
-function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject): OctreeCSGObject {
+function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject, materials: MaterialDefinitions): OctreeCSGObject {
     switch (obj.op) {
         case 'union':
         case 'subtract':
@@ -15,8 +14,8 @@ function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject): OctreeCSGObject {
         {
             return <OctreeCSGObject>{
                 op: obj.op,
-                objA: decodeOctreeCSGObjectOrCSG(obj.objA),
-                objB: decodeOctreeCSGObjectOrCSG(obj.objB),
+                objA: decodeOctreeCSGObjectOrCSG(obj.objA, materials),
+                objB: decodeOctreeCSGObjectOrCSG(obj.objB, materials),
             }
         }
         case 'unionArray':
@@ -26,7 +25,7 @@ function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject): OctreeCSGObject {
             const decodedObjs = new Array<OctreeCSGObjectArgument>();
 
             for (const octreeObj of obj.objs) {
-                decodedObjs.push(decodeOctreeCSGObjectOrCSG(octreeObj));
+                decodedObjs.push(decodeOctreeCSGObjectOrCSG(octreeObj, materials));
             }
 
             return <OctreeCSGObject>{
@@ -39,44 +38,57 @@ function decodeOctreeCSGObject(obj: EncodedOctreeCSGObject): OctreeCSGObject {
     }
 }
 
-function decodeOctreeCSGObjectOrCSG(obj: EncodedOctreeCSGObjectArgument): OctreeCSGObject | OctreeCSG {
-    if (Array.isArray(obj)) {
-        return decodeOctree(...obj);
+function decodeOctreeCSGObjectOrCSG(obj: EncodedOctreeCSGObjectArgument, materials: MaterialDefinitions): OctreeCSGObject | OctreeCSG {
+    if (obj instanceof ArrayBuffer) {
+        return OctreeCSG.decode(obj, materials);
     } else {
-        return decodeOctreeCSGObject(obj);
+        return decodeOctreeCSGObject(obj, materials);
     }
+}
+
+function logWorker(callback: (message: string) => void, message: unknown) {
+    callback(`[Worker ${self.name}] ${message}`);
 }
 
 globalThis.onmessage = function(message: MessageEvent<WorkerRequest>) {
     switch(message.data.type) {
         case 'operation':
         {
+            logWorker(console.debug, `Job started`);
+
             try {
+                const materials = message.data.materials;
+                const options = message.data.options;
+
                 const result = OctreeCSG.operation(
-                    decodeOctreeCSGObject(message.data.operation),
-                    false,
+                    decodeOctreeCSGObject(message.data.operation, materials),
+                    options
                 );
 
                 const transferables = new Array<ArrayBuffer>();
-                const [vertices, normals] = encodeOctree(result, transferables);
+                const buffer = result.encode(materials, transferables);
 
                 postMessage(<JobResult>{
                     success: true,
                     jobIndex: message.data.jobIndex,
-                    vertices,
-                    normals,
+                    buffer,
+                    materials,
                 });
             } catch(error) {
+                logWorker(console.error, error);
                 postMessage(<JobResult>{
                     success: false,
                     jobIndex: message.data.jobIndex,
                     error,
                 });
             }
+
+            logWorker(console.debug, `Job finished`);
+
             break;
         }
         default:
-            console.error(`Unknown worker request type: ${message.data.type}`);
+            logWorker(console.error, `Unknown worker request type: ${message.data.type}`);
     }
 }
 

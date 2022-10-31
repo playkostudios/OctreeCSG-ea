@@ -5,6 +5,7 @@ import Plane from './Plane';
 import type Vertex from './Vertex';
 
 import { mat3, mat4, vec3 } from 'gl-matrix';
+import { MaterialDefinitions, MaterialAttributes, MaterialAttributeTransform } from '../base/MaterialDefinition';
 
 let _polygonID = 0;
 
@@ -19,7 +20,7 @@ export enum PolygonState {
 export class Polygon {
     id: number;
     vertices: Vertex[];
-    shared?: number;
+    shared: number;
     plane: Plane;
     triangle: Triangle;
     intersects = false;
@@ -31,7 +32,7 @@ export class Polygon {
     originalValid = false;
     newPolygon = false;
 
-    constructor(vertices: Vertex[], shared?: number) {
+    constructor(vertices: Vertex[], shared = 0) {
         this.id = _polygonID++;
         this.vertices = vertices.map(v => v.clone());
         this.shared = shared;
@@ -43,17 +44,34 @@ export class Polygon {
         return this.triangle.midpoint;
     }
 
-    applyMatrix(matrix: mat4, normalMatrixIn?: mat3) {
-        const normalMatrix = normalMatrixIn || mat3.normalFromMat4(tmpm3, matrix);
-
+    applyMatrixNoAuto(attributes: MaterialAttributes | undefined, matrix: mat4, normalMatrix: mat3 | undefined) {
         this.vertices.forEach(v => {
             vec3.transformMat4(v.pos, v.pos, matrix);
-            vec3.transformMat3(v.normal, v.normal, normalMatrix);
+
+            if (normalMatrix) {
+                v.applyMatrix(matrix, normalMatrix, attributes);
+            }
         });
 
         this.plane.delete();
         this.plane = Plane.fromPoints(this.vertices[0].pos, this.vertices[1].pos, this.vertices[2].pos);
         this.triangle.set(this.vertices[0].pos, this.vertices[1].pos, this.vertices[2].pos);
+    }
+
+    applyMatrix(materials: MaterialDefinitions, matrix: mat4, normalMatrixIn?: mat3) {
+        let normalMatrix: undefined | mat3;
+        const attributes = materials.get(this.shared);
+
+        if (attributes) {
+            for (const propDef of attributes) {
+                if (propDef.transformable === MaterialAttributeTransform.Normal) {
+                    normalMatrix = normalMatrixIn || mat3.normalFromMat4(tmpm3, matrix);
+                    break;
+                }
+            }
+        }
+
+        this.applyMatrixNoAuto(attributes, matrix, normalMatrix);
     }
 
     reset(resetOriginal = true) {
@@ -115,8 +133,9 @@ export class Polygon {
         return polygon;
     }
 
-    flip() {
-        this.vertices.reverse().forEach(v => v.flip());
+    flip(materials: MaterialDefinitions) {
+        const attributes = materials.get(this.shared);
+        this.vertices.reverse().forEach(v => v.flip(attributes));
         const tmp = this.triangle.a;
         this.triangle.a = this.triangle.c;
         this.triangle.c = tmp;
@@ -133,7 +152,7 @@ export class Polygon {
         }
 
         (this.triangle as unknown) = undefined;
-        this.shared = undefined;
+        this.shared = 0;
         this.setInvalid();
     }
 }

@@ -14,7 +14,7 @@ export function makeCircularBase(vertices: Array<Vertex>, xzn: CircularPrecalcAr
     const polyline = new Array(segments);
 
     for (let i = 0; i < segments; i++) {
-        polyline[i] = new Vertex(vec3.fromValues(xzn[i][0], y, xzn[i][1]), vec3.clone(normal));
+        polyline[i] = new Vertex(vec3.fromValues(xzn[i][0], y, xzn[i][1]), [vec3.clone(normal)]);
     }
 
     // triangulate

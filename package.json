@@ -1,6 +1,6 @@
 {
   "name": "octreecsg-ea",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Engine-agnostic port of the OctreeCSG library",
   "exports": "./lib/OctreeCSG-ea.esm.min.js",
   "types": "lib/index.d.ts",

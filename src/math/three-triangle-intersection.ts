@@ -156,7 +156,6 @@ function coplanar_tri_tri3d(p1: Readonly<vec3>, q1: Readonly<vec3>, r1: Readonly
     /* Projection of the triangles in 3D onto 2D such that the area of
     the projection is maximized. */
 
-    // TODO maybe use Float32Array.slice if the source is contiguous
     if (n_x > n_z && n_x >= n_y) { // Project onto plane YZ
         P1[0] = q1[2], P1[1] = q1[1];
         Q1[0] = p1[2], Q1[1] = p1[1];
@@ -399,8 +398,7 @@ function getLines(triangle: Triangle) {
 }
 
 function checkTrianglesIntersection(triangle1: Triangle, triangle2: Triangle, additions: Additions = { coplanar: false, source: vec3.create(), target: vec3.create() }) {
-    const triangleIntersects = triangleIntersectsTriangle(triangle1, triangle2, additions);
-    if (!triangleIntersects && additions.coplanar) {
+    if (additions.coplanar) {
         const triangle1Lines = getLines(triangle1);
         const triangle2Lines = getLines(triangle2);
 
@@ -411,11 +409,9 @@ function checkTrianglesIntersection(triangle1: Triangle, triangle2: Triangle, ad
                 }
             }
         }
-
-        return false;
     }
 
-    return triangleIntersects;
+    return triangleIntersectsTriangle(triangle1, triangle2, additions);
 }
 
 export { triangleIntersectsTriangle, checkTrianglesIntersection, getLines, lineIntersects };

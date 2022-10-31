@@ -26,13 +26,13 @@ export class Cylinder extends CSGPrimitive {
             const [x1, z1, normal1] = xzn[i];
             const [x2, z2, normal2] = xzn[(i + 1) % subDivs];
 
-            vertices[index++] = new Vertex(vec3.fromValues(x2, halfLength, z2), vec3.clone(normal2));
-            vertices[index++] = new Vertex(vec3.fromValues(x1, halfLength, z1), vec3.clone(normal1));
-            vertices[index++] = new Vertex(vec3.fromValues(x1, -halfLength, z1), vec3.clone(normal1));
+            vertices[index++] = new Vertex(vec3.fromValues(x2, halfLength, z2), [vec3.clone(normal2)]);
+            vertices[index++] = new Vertex(vec3.fromValues(x1, halfLength, z1), [vec3.clone(normal1)]);
+            vertices[index++] = new Vertex(vec3.fromValues(x1, -halfLength, z1), [vec3.clone(normal1)]);
 
-            vertices[index++] = new Vertex(vec3.fromValues(x1, -halfLength, z1), vec3.clone(normal1));
-            vertices[index++] = new Vertex(vec3.fromValues(x2, -halfLength, z2), vec3.clone(normal2));
-            vertices[index++] = new Vertex(vec3.fromValues(x2, halfLength, z2), vec3.clone(normal2));
+            vertices[index++] = new Vertex(vec3.fromValues(x1, -halfLength, z1), [vec3.clone(normal1)]);
+            vertices[index++] = new Vertex(vec3.fromValues(x2, -halfLength, z2), [vec3.clone(normal2)]);
+            vertices[index++] = new Vertex(vec3.fromValues(x2, halfLength, z2), [vec3.clone(normal2)]);
         }
 
         // make bounding box

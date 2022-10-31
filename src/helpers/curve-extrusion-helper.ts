@@ -1,10 +1,13 @@
-import { mat3, mat4, vec2, vec3, vec4 } from 'gl-matrix';
+import { mat3, mat4, vec2, vec3 } from 'gl-matrix';
 import OctreeCSG from '../base/OctreeCSG';
 import Plane from '../math/Plane';
 import { Polygon } from '../math/Polygon';
 import { tv0 } from '../math/temp';
 import Vertex from '../math/Vertex';
 import triangulate2DPolygon from './triangulate-2d-polygon';
+import CSGPrimitiveMaterialAttributes from '../primitives/CSGPrimitiveMaterialAttributes';
+
+import type { CurveFrames } from './curve-frame';
 
 function makeSlice(output: Array<vec3>, outputMat: mat4, polyline: Array<vec2>, position: vec3, r: vec3, s: vec3, t: vec3) {
     // r (normal) = +y, s (binormal) = +x, t (tangent) = +z
@@ -48,9 +51,9 @@ function makeBase(octree: OctreeCSG, triangulatedBase: Array<vec2>, mat: mat4, b
         const normal = Plane.calculateNormal(a, b, c);
 
         // make vertices
-        const aVert = new Vertex(a, vec3.clone(normal));
-        const bVert = new Vertex(b, vec3.clone(normal));
-        const cVert = new Vertex(c, normal);
+        const aVert = new Vertex(a, [vec3.clone(normal)]);
+        const bVert = new Vertex(b, [vec3.clone(normal)]);
+        const cVert = new Vertex(c, [normal]);
 
         // add to octree
         const polygon = new Polygon([aVert, bVert, cVert]);
@@ -62,9 +65,10 @@ function makeBase(octree: OctreeCSG, triangulatedBase: Array<vec2>, mat: mat4, b
 export interface CurveExtrusionOptions {
     includeBases?: boolean;
     smoothNormals?: boolean;
+    materialID?: number;
 }
 
-export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, frames: Array<[r: vec3, s: vec3, t: vec3]>, options?: CurveExtrusionOptions) {
+export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, frames: CurveFrames, options?: CurveExtrusionOptions) {
     // validate curve
     const pointCount = positions.length;
 
@@ -77,7 +81,9 @@ export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, fram
     }
 
     // output:
-    const octree = new OctreeCSG();
+    const materialID = options?.materialID ?? 0;
+    const materials = new Map([[materialID, CSGPrimitiveMaterialAttributes]]);
+    const octree = new OctreeCSG(materials);
 
     // pre-calculate first segment's slice (3D polyline)
     const sliceVertices = polyline.length;
@@ -172,16 +178,16 @@ export function curveExtrude(polyline: Array<vec2>, positions: Array<vec3>, fram
             vec3.transformMat3(curNormalB, curNormalB, curMatNormal);
 
             // make vertices
-            const lastA = new Vertex(lastSlice[j], lastNormalA);
-            const lastB = new Vertex(lastSlice[k], lastNormalB);
-            const curA = new Vertex(vec3.clone(curSlice[j]), curNormalA);
-            const curB = new Vertex(vec3.clone(curSlice[k]), curNormalB);
+            const lastA = new Vertex(lastSlice[j], [lastNormalA]);
+            const lastB = new Vertex(lastSlice[k], [lastNormalB]);
+            const curA = new Vertex(vec3.clone(curSlice[j]), [curNormalA]);
+            const curB = new Vertex(vec3.clone(curSlice[k]), [curNormalB]);
 
             // make polygons
-            const polygonA = new Polygon([curB.clone(), lastB, lastA.clone()]);
+            const polygonA = new Polygon([curB.clone(), lastB, lastA.clone()], materialID);
             polygonA.originalValid = true;
             octree.addPolygon(polygonA);
-            const polygonB = new Polygon([lastA, curA, curB]);
+            const polygonB = new Polygon([lastA, curA, curB], materialID);
             polygonB.originalValid = true;
             octree.addPolygon(polygonB);
         }

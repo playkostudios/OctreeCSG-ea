@@ -1,4 +1,4 @@
-export type EncodedOctreeCSG = [vertexBuffer: Float32Array, normalBuffer: Float32Array];
+export type EncodedOctreeCSG = ArrayBuffer;
 
 export type EncodedOctreeCSGObjectArgument = EncodedOctreeCSG | EncodedOctreeCSGObject;
 

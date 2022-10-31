@@ -71,13 +71,13 @@ export class Torus extends CSGPrimitive {
                 const [pos22, normal22] = segment2[jNext];
 
                 // first triangle
-                vertices[index++] = new Vertex(vec3.clone(pos12), vec3.clone(normal12));
-                vertices[index++] = new Vertex(pos11, normal11);
-                vertices[index++] = new Vertex(vec3.clone(pos21), vec3.clone(normal21));
+                vertices[index++] = new Vertex(vec3.clone(pos12), [vec3.clone(normal12)]);
+                vertices[index++] = new Vertex(pos11, [normal11]);
+                vertices[index++] = new Vertex(vec3.clone(pos21), [vec3.clone(normal21)]);
                 // second triangle
-                vertices[index++] = new Vertex(vec3.clone(pos21), vec3.clone(normal21));
-                vertices[index++] = new Vertex(vec3.clone(pos22), vec3.clone(normal22));
-                vertices[index++] = new Vertex(pos12, normal12);
+                vertices[index++] = new Vertex(vec3.clone(pos21), [vec3.clone(normal21)]);
+                vertices[index++] = new Vertex(vec3.clone(pos22), [vec3.clone(normal22)]);
+                vertices[index++] = new Vertex(pos12, [normal12]);
             }
         }
 

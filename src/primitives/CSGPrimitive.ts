@@ -1,6 +1,7 @@
 import { mat4, quat, vec3 } from 'gl-matrix';
 import OctreeCSG from '../base/OctreeCSG';
 import { Polygon } from '../math/Polygon';
+import CSGPrimitiveMaterialAttributes from './CSGPrimitiveMaterialAttributes';
 
 import type { mat3 } from 'gl-matrix';
 
@@ -8,13 +9,19 @@ import type Vertex from '../math/Vertex';
 import type Box3 from '../math/Box3';
 
 export type CSGPrimitiveOptions = {
+    materialID?: number,
+    outputMatrix?: mat4,
+    inverted?: boolean,
+} & ({
     matrix: mat4,
     normalMatrix?: mat3,
 } | {
-    rotation?: quat,
+    rotation?: quat | vec3,
     translation?: vec3,
     scale?: vec3,
-};
+} | {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+});
 
 export class CSGPrimitive extends OctreeCSG {
     constructor(box: Box3, triangleVertices: Array<Vertex>, options?: CSGPrimitiveOptions) {
@@ -23,11 +30,14 @@ export class CSGPrimitive extends OctreeCSG {
             throw new Error('Input triangle vertices array has a non-multiple-of-three length');
         }
 
-        super(box);
+        const materialID = options?.materialID ?? 0;
+        const materials = new Map([[materialID, CSGPrimitiveMaterialAttributes]]);
+
+        super(materials, box);
 
         // turn vertex array to triangle array
         for (let i = 0; i < vertexCount; i += 3) {
-            const polygon = new Polygon(triangleVertices.slice(i, i + 3));
+            const polygon = new Polygon(triangleVertices.slice(i, i + 3), materialID);
             polygon.originalValid = true;
             this.polygons.push(polygon);
         }
@@ -37,20 +47,39 @@ export class CSGPrimitive extends OctreeCSG {
             return;
         }
 
+        // TODO this feels kinda wrong, but i can't think of a better api (as in
+        // easier to use, but still as efficient) for this. maybe improve this
+        // later?
+        const outputMatrix = options.outputMatrix;
+
         if ('matrix' in options) {
             const matrix = options.matrix;
             this.applyMatrix(matrix, options.normalMatrix);
-        } else if (options.rotation || options.translation || options.scale) {
+
+            if (outputMatrix) {
+                mat4.copy(outputMatrix, matrix);
+            }
+        } else if ('rotation' in options || 'translation' in options || 'scale' in options) {
             // make transformation matrix
             const matrix = mat4.create();
 
-            if (options.rotation && options.translation) {
+            let rotation;
+            if (options.rotation) {
+                if (options.rotation.length === 4) {
+                    rotation = options.rotation;
+                } else {
+                    const [xDeg, yDeg, zDeg] = options.rotation;
+                    rotation = quat.fromEuler(quat.create(), xDeg, yDeg, zDeg);
+                }
+            }
+
+            if (rotation && options.translation) {
                 if (options.scale) {
                     // RTS
-                    mat4.fromRotationTranslationScale(matrix, options.rotation, options.translation, options.scale);
+                    mat4.fromRotationTranslationScale(matrix, rotation, options.translation, options.scale);
                 } else {
                     // RT
-                    mat4.fromRotationTranslation(matrix, options.rotation, options.translation);
+                    mat4.fromRotationTranslation(matrix, rotation, options.translation);
                 }
             } else if (options.translation) {
                 if (options.scale) {
@@ -62,17 +91,17 @@ export class CSGPrimitive extends OctreeCSG {
                     // T
                     mat4.fromTranslation(matrix, options.translation);
                 }
-            } else if (options.rotation) {
+            } else if (rotation) {
                 if (options.scale) {
                     // RS
                     mat4.identity(matrix);
                     const tmpMat = mat4.create();
-                    mat4.fromQuat(tmpMat, options.rotation);
+                    mat4.fromQuat(tmpMat, rotation);
                     mat4.multiply(matrix, matrix, tmpMat);
                     mat4.scale(matrix, matrix, options.scale);
                 } else {
                     // R
-                    mat4.fromQuat(matrix, options.rotation);
+                    mat4.fromQuat(matrix, rotation);
                 }
             } else {
                 // S
@@ -82,6 +111,17 @@ export class CSGPrimitive extends OctreeCSG {
             }
 
             this.applyMatrix(matrix);
+
+            if (outputMatrix) {
+                mat4.copy(outputMatrix, matrix);
+            }
+        } else if (outputMatrix) {
+            mat4.identity(outputMatrix);
+        }
+
+        // invert if needed
+        if (options?.inverted) {
+            this.invert();
         }
     }
 }
