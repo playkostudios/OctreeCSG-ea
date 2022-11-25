@@ -1,3 +1,9 @@
+# STOP!
+
+This project is abandoned! Go use [Manifold](https://github.com/elalish/manifold/) instead, it's a much better project!
+
+Old README:
+
 # OctreeCSG-ea
 
 A stripped down engine-agnostic version of the
