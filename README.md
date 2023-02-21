@@ -1,6 +1,6 @@
-# STOP!
+# NOTICE
 
-This project is abandoned! Go use [Manifold](https://github.com/elalish/manifold/) instead, it's a much better project!
+This project is abandoned! We've since switched over to [Manifold](https://github.com/elalish/manifold/).
 
 Old README:
 
@@ -9,6 +9,8 @@ Old README:
 A stripped down engine-agnostic version of the
 [OctreeCSG library](https://github.com/giladdarshan/OctreeCSG), ported to
 Typescript. **This is very work-in-progress**.
+
+Note that this project is not affiliated with the OctreeCSG project.
 
 Because this is a stripped down version of the library, some features are
 missing, such as directly operating with meshes and assigning materials.
